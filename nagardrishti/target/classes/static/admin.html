@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Admin Dashboard — NagarDrishti</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><span class="ico">N</span>NagarDrishti <span style="font-size:.75rem;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:999px;margin-left:8px">Admin</span></div>
+  <div class="nav-links">
+    <a href="/schemes.html" class="nav-link">My Schemes</a>
+    <a href="/projects.html" class="nav-link">Local Projects</a>
+    <a href="/admin.html" class="nav-link active">Admin</a>
+    <div class="nav-user">
+      <span class="nav-user-name" id="navUserName">Admin</span>
+      <button class="btn-logout" id="btnLogout">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container" id="adminContent">
+  <div class="page-header">
+    <h1 class="page-title">Feedback Administration</h1>
+    <p class="page-subtitle">Review, verify, and moderate citizen feedback.</p>
+  </div>
+
+  <div id="alertBox" class="alert" style="max-width:600px"></div>
+
+  <!-- Stats -->
+  <div class="stats-grid" style="margin-bottom:28px">
+    <div class="stat-card highlight"><div class="stat-label">Total Feedback</div><div class="stat-value" id="statTotal">—</div></div>
+    <div class="stat-card warning"><div class="stat-label">Pending Review</div><div class="stat-value" id="statPending">—</div></div>
+    <div class="stat-card success"><div class="stat-label">Verified</div><div class="stat-value" id="statVerified">—</div></div>
+    <div class="stat-card danger"><div class="stat-label">Project Complaints</div><div class="stat-value" id="statComplaints">—</div></div>
+    <div class="stat-card"><div class="stat-label">Scheme Verifications</div><div class="stat-value" id="statVerifications">—</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="admin-tabs">
+    <div class="admin-tab active" data-tab="ALL">All</div>
+    <div class="admin-tab" data-tab="PENDING">Pending</div>
+    <div class="admin-tab" data-tab="VERIFIED">Verified</div>
+    <div class="admin-tab" data-tab="REJECTED">Rejected</div>
+    <div class="admin-tab" data-tab="PROJECT_COMPLAINT">Complaints</div>
+    <div class="admin-tab" data-tab="SCHEME_VERIFICATION">Verifications</div>
+  </div>
+
+  <!-- Table -->
+  <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Citizen</th>
+          <th>Type</th>
+          <th>Related</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Upvotes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="feedbackBody">
+        <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray-500)">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+</body></html>

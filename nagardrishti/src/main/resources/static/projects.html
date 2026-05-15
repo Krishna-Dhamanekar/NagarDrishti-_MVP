@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Local Projects — NagarDrishti</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><span class="ico">N</span>NagarDrishti</div>
+  <div class="nav-links">
+    <a href="/schemes.html" class="nav-link">My Schemes</a>
+    <a href="/projects.html" class="nav-link active">Local Projects</a>
+    <div class="nav-user">
+      <span class="nav-user-name" id="navUserName">User</span>
+      <button class="btn-logout" id="btnLogout">Logout</button>
+    </div>
+  </div>
+</nav>
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Government Projects Near You</h1>
+    <p class="page-subtitle">Enter your pincode to see all projects, budgets, and citizen complaints. Try 581115 for demo data.</p>
+  </div>
+  <div class="filter-bar" style="margin-bottom:24px">
+    <span style="font-size:.85rem;font-weight:600;color:var(--gray-700)">Pincode:</span>
+    <input type="text" id="pincodeInput" class="search-input" maxlength="6" placeholder="e.g. 581115">
+    <button class="btn btn-sky" id="btnSearch">Search</button>
+  </div>
+  <div class="stats-grid" id="statsGrid" style="display:none">
+    <div class="stat-card highlight"><div class="stat-label">Total Projects</div><div class="stat-value" id="statTotal">0</div><div class="stat-sub">In this pincode</div></div>
+    <div class="stat-card"><div class="stat-label">Total Budget</div><div class="stat-value" id="statBudget" style="font-size:1.35rem">₹0</div><div class="stat-sub" id="statSpent">Spent: ₹0</div></div>
+    <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
+    <div class="stat-card warning"><div class="stat-label">In Progress</div><div class="stat-value" id="statProgress">0</div></div>
+    <div class="stat-card danger"><div class="stat-label">Delayed</div><div class="stat-value" id="statDelayed">0</div></div>
+  </div>
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <span style="font-size:.85rem;font-weight:600;color:var(--gray-700)">Category:</span>
+    <button class="filter-chip active" data-value="ALL">All</button>
+    <button class="filter-chip" data-value="ROAD">Road</button>
+    <button class="filter-chip" data-value="WATER">Water</button>
+    <button class="filter-chip" data-value="HEALTH">Health</button>
+    <button class="filter-chip" data-value="HOUSING">Housing</button>
+    <button class="filter-chip" data-value="SCHOOL">School</button>
+    <button class="filter-chip" data-value="WOMEN">Women</button>
+    <button class="filter-chip" data-value="AGRICULTURE">Agriculture</button>
+    <button class="filter-chip" data-value="ELECTRICITY">Electricity</button>
+  </div>
+  <div id="projectsContainer">
+    <div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">Enter a pincode to begin</div><p>Try 581115 for sample data from our pilot village.</p></div>
+  </div>
+</div>
+<script src="/js/common.js"></script>
+<script src="/js/feedback.js"></script>
+<script src="/js/projects.js"></script>
+</body></html>

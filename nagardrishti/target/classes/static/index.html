@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>NagarDrishti — Login / Register</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="auth-wrapper">
+  <aside class="auth-hero">
+    <div class="auth-hero-content">
+      <h1>Know your rights.<br>Watch your village.</h1>
+      <p>Match to welfare schemes you qualify for, track government projects in your locality, and submit accountability feedback — all in one place.</p>
+      <ul class="auth-hero-features">
+        <li>Personalised welfare scheme matching</li>
+        <li>Student scholarship discovery</li>
+        <li>Government project tracking by pincode</li>
+        <li>Citizen feedback and complaint system</li>
+      </ul>
+    </div>
+  </aside>
+  <main class="auth-form-wrapper">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Login</button>
+      <button class="auth-tab" data-tab="register">Register</button>
+    </div>
+    <div id="alertBox" class="alert"></div>
+
+    <form id="loginForm" class="auth-form">
+      <h2>Welcome back</h2>
+      <p class="form-subtitle" style="color:var(--gray-500);margin-bottom:24px">Login with your phone number.</p>
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="tel" id="loginPhone" class="form-input" placeholder="10-digit mobile" maxlength="10" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="loginPassword" class="form-input" placeholder="Your password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+
+    <form id="registerForm" class="auth-form" style="display:none">
+      <h2>Create account</h2>
+      <p class="form-subtitle" style="color:var(--gray-500);margin-bottom:24px">Your profile helps us match the right schemes to you.</p>
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="regName" class="form-input" placeholder="e.g. Sunita Patil" required></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" id="regPhone" class="form-input" maxlength="10" placeholder="10 digits" required></div>
+        <div class="form-group"><label class="form-label">Email <span style="color:var(--gray-300)">(optional)</span></label><input type="email" id="regEmail" class="form-input" placeholder="you@example.com"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" id="regPassword" class="form-input" minlength="6" placeholder="At least 6 characters" required></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Age</label><input type="number" id="regAge" class="form-input" min="1" max="120" placeholder="e.g. 28" required></div>
+        <div class="form-group"><label class="form-label">Gender</label>
+          <select id="regGender" class="form-select" required><option value="">Select</option><option value="FEMALE">Female</option><option value="MALE">Male</option><option value="OTHER">Other</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Annual Income (₹)</label><input type="number" id="regIncome" class="form-input" min="0" placeholder="e.g. 150000" required></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select id="regCategory" class="form-select" required><option value="">Select</option><option value="BPL">BPL</option><option value="APL">APL</option><option value="SC">SC</option><option value="ST">ST</option><option value="OBC">OBC</option><option value="GENERAL">General</option><option value="MINORITY">Minority</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Marital Status</label>
+        <select id="regMarital" class="form-select" required><option value="">Select</option><option value="UNMARRIED">Unmarried</option><option value="MARRIED">Married</option><option value="WIDOW">Widow</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Village / Locality</label><input type="text" id="regVillage" class="form-input" placeholder="e.g. Hanumanamatti"></div>
+        <div class="form-group"><label class="form-label">Pincode</label><input type="text" id="regPincode" class="form-input" maxlength="6" placeholder="6 digits" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">District</label><input type="text" id="regDistrict" class="form-input" placeholder="e.g. Haveri"></div>
+        <div class="form-group"><label class="form-label">State</label><input type="text" id="regState" class="form-input" placeholder="e.g. Karnataka" required></div>
+      </div>
+      <button type="submit" class="btn btn-primary">Create Account</button>
+    </form>
+  </main>
+</div>
+<script src="/js/common.js"></script>
+<script src="/js/auth.js"></script>
+</body></html>

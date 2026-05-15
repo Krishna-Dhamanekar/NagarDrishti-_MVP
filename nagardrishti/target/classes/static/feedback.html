@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Submit Feedback — NagarDrishti</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><span class="ico">N</span>NagarDrishti</div>
+  <div class="nav-links">
+    <a href="/schemes.html" class="nav-link">My Schemes</a>
+    <a href="/projects.html" class="nav-link">Local Projects</a>
+    <div class="nav-user">
+      <span class="nav-user-name" id="navUserName">User</span>
+      <button class="btn-logout" id="btnLogout">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Submit Feedback</h1>
+    <p class="page-subtitle">Reporting on: <strong id="relatedName">—</strong></p>
+  </div>
+
+  <div class="feedback-form-card">
+    <div id="alertBox" class="alert"></div>
+
+    <!-- Type selector -->
+    <div class="feedback-type-tabs">
+      <div class="type-tab" data-type="PROJECT_COMPLAINT">
+        <span class="tab-icon">⚠️</span>
+        Project Complaint<br>
+        <small style="font-weight:400;font-size:.78rem;color:var(--gray-500)">Report fake or poor quality work</small>
+      </div>
+      <div class="type-tab" data-type="SCHEME_VERIFICATION">
+        <span class="tab-icon">✅</span>
+        Scheme Verification<br>
+        <small style="font-weight:400;font-size:.78rem;color:var(--gray-500)">Did you receive scheme money?</small>
+      </div>
+    </div>
+
+    <form id="feedbackForm">
+
+      <!-- PROJECT COMPLAINT fields -->
+      <div id="complaintFields" class="conditional-field">
+        <div class="form-group">
+          <label class="form-label">Type of Complaint</label>
+          <select id="complaintCategory" class="form-select">
+            <option value="">Select complaint type</option>
+            <option value="WORK_NOT_STARTED">Work not started</option>
+            <option value="POOR_QUALITY">Poor quality of work</option>
+            <option value="FUNDS_MISUSED">Funds appear misused</option>
+            <option value="DELAYED">Project heavily delayed</option>
+            <option value="CONTRACTOR_ABSENT">Contractor absent from site</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SCHEME VERIFICATION fields -->
+      <div id="schemeFields" class="conditional-field">
+        <div class="form-group">
+          <label class="form-label">Did you receive this scheme money?</label>
+          <div class="radio-group">
+            <div class="radio-option" data-value="yes">✓ Yes, I received</div>
+            <div class="radio-option" data-value="no">✗ No, I did NOT receive</div>
+          </div>
+        </div>
+        <div id="amountFields" class="conditional-field">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Amount Received (₹)</label>
+              <input type="number" id="amountReceived" class="form-input" min="0" placeholder="Actual amount received">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount Expected (₹)</label>
+              <input type="number" id="amountExpected" class="form-input" min="0" placeholder="As per scheme">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Month of Receipt</label>
+            <input type="text" id="receivedMonth" class="form-input" placeholder="e.g. March 2025">
+          </div>
+        </div>
+        <div id="noReceiveMsg" class="conditional-field">
+          <div class="alert alert-error show" style="margin-bottom:0">This will be flagged for admin review and follow-up. Please describe your situation below.</div>
+        </div>
+      </div>
+
+      <!-- Shared: Description -->
+      <div class="form-group" style="margin-top:16px">
+        <label class="form-label">Description <span style="color:var(--gray-500);font-weight:400">(required)</span></label>
+        <textarea id="description" class="form-input" rows="4" placeholder="Describe what happened in detail (min 10 characters)" required></textarea>
+      </div>
+
+      <!-- Photo upload -->
+      <div class="form-group">
+        <label class="form-label">Photo Proof <span style="color:var(--gray-500);font-weight:400">(optional)</span></label>
+        <label for="photoInput" class="photo-upload" style="display:block">
+          <div>📷 Click to upload a photo</div>
+          <div id="photoLabel" style="font-size:.82rem;color:var(--gray-500);margin-top:6px">Bank statement, site photo, receipt, etc.</div>
+          <img id="photoPreview" class="photo-preview" alt="Preview">
+        </label>
+        <input type="file" id="photoInput" accept="image/*" style="display:none">
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button type="button" class="btn btn-outline" style="width:auto;padding:12px 24px" onclick="history.back()">Cancel</button>
+        <button type="submit" id="submitBtn" class="btn btn-primary" style="width:auto;flex:1">Submit Feedback</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/submit_feedback.js"></script>
+</body></html>
