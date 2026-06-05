@@ -24,7 +24,7 @@ public class FeedbackService {
 
         Feedback fb = Feedback.builder()
             .userId(user.getId())
-            .userName(user.getName())
+                .userName(user.getFullName())
             .type(req.getType().toUpperCase())
             .relatedId(req.getRelatedId())
             .relatedName(req.getRelatedName())
@@ -93,7 +93,7 @@ public class FeedbackService {
         fb.setStatus(status.toUpperCase());
         if (adminRemark != null) fb.setAdminRemark(adminRemark);
         Feedback updated = feedbackRepo.save(fb);
-        log.info("Feedback {} status updated to {} by admin {}", feedbackId, status, admin.getName());
+        log.info("Feedback {} status updated to {} by admin {}", feedbackId, status, admin.getFullName());
         return updated;
     }
 

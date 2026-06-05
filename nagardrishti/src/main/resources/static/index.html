@@ -19,6 +19,7 @@
       </ul>
     </div>
   </aside>
+
   <main class="auth-form-wrapper">
     <div class="auth-tabs">
       <button class="auth-tab active" data-tab="login">Login</button>
@@ -26,9 +27,10 @@
     </div>
     <div id="alertBox" class="alert"></div>
 
+    <!-- ── LOGIN FORM ──────────────────────────────────────────────────── -->
     <form id="loginForm" class="auth-form">
       <h2>Welcome back</h2>
-      <p class="form-subtitle" style="color:var(--gray-500);margin-bottom:24px">Login with your phone number.</p>
+      <p style="color:var(--gray-500);margin-bottom:24px;font-size:.9rem">Login with your phone number.</p>
       <div class="form-group">
         <label class="form-label">Phone Number</label>
         <input type="tel" id="loginPhone" class="form-input" placeholder="10-digit mobile" maxlength="10" required>
@@ -40,42 +42,223 @@
       <button type="submit" class="btn btn-primary">Login</button>
     </form>
 
+    <!-- ── REGISTER FORM ──────────────────────────────────────────────── -->
     <form id="registerForm" class="auth-form" style="display:none">
       <h2>Create account</h2>
-      <p class="form-subtitle" style="color:var(--gray-500);margin-bottom:24px">Your profile helps us match the right schemes to you.</p>
-      <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="regName" class="form-input" placeholder="e.g. Sunita Patil" required></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" id="regPhone" class="form-input" maxlength="10" placeholder="10 digits" required></div>
-        <div class="form-group"><label class="form-label">Email <span style="color:var(--gray-300)">(optional)</span></label><input type="email" id="regEmail" class="form-input" placeholder="you@example.com"></div>
+      <p style="color:var(--gray-500);margin-bottom:20px;font-size:.9rem">Your profile helps us match the right schemes for you.</p>
+
+      <!-- ── Section 1: Personal Info ──────────────────────────────────── -->
+      <div class="form-section-title">Personal Information</div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="regName" class="form-input" placeholder="e.g. Sunita Patil" required>
       </div>
-      <div class="form-group"><label class="form-label">Password</label><input type="password" id="regPassword" class="form-input" minlength="6" placeholder="At least 6 characters" required></div>
+
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Age</label><input type="number" id="regAge" class="form-input" min="1" max="120" placeholder="e.g. 28" required></div>
-        <div class="form-group"><label class="form-label">Gender</label>
-          <select id="regGender" class="form-select" required><option value="">Select</option><option value="FEMALE">Female</option><option value="MALE">Male</option><option value="OTHER">Other</option></select>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" id="regPhone" class="form-input" maxlength="10" placeholder="10 digits (starts 6-9)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email <span style="color:var(--gray-300)">(optional)</span></label>
+          <input type="email" id="regEmail" class="form-input" placeholder="you@example.com">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="regPassword" class="form-input" minlength="6" placeholder="At least 6 characters" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input type="number" id="regAge" class="form-input" min="1" max="120" placeholder="e.g. 28" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select id="regGender" class="form-select" required>
+            <option value="">Select</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ── Section 2: Location ─────────────────────────────────────── -->
+      <div class="form-section-title">Location</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">State</label>
+          <input type="text" id="regState" class="form-input" placeholder="e.g. Karnataka" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">District</label>
+          <input type="text" id="regDistrict" class="form-input" placeholder="e.g. Haveri">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pincode</label>
+        <input type="text" id="regPincode" class="form-input" maxlength="6" placeholder="6-digit pincode" required>
+      </div>
+
+      <!-- ── Section 3: Socio-Economic Profile ──────────────────────── -->
+      <div class="form-section-title">Socio-Economic Profile</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="regCategory" class="form-select" required>
+            <option value="">Select</option>
+            <option value="GEN">General</option>
+            <option value="OBC">OBC</option>
+            <option value="SC">SC</option>
+            <option value="ST">ST</option>
+            <option value="MINORITY">Minority</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Annual Income (₹)</label>
+          <input type="number" id="regIncome" class="form-input" min="0" placeholder="e.g. 150000" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Education Level</label>
+        <select id="regEducation" class="form-select" required>
+          <option value="">Select highest qualification</option>
+          <option value="NONE">No formal education</option>
+          <option value="PRIMARY">Primary (up to Class 5)</option>
+          <option value="SECONDARY">Secondary (Class 6-10)</option>
+          <option value="HSC">HSC / Class 12 / PUC</option>
+          <option value="DIPLOMA">Diploma</option>
+          <option value="ITI">ITI</option>
+          <option value="GRADUATE">Graduate (Degree)</option>
+          <option value="POSTGRADUATE">Postgraduate</option>
+          <option value="DOCTORATE">Doctorate / PhD</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Occupation <span style="color:var(--gray-300)">(optional)</span></label>
+        <input type="text" id="regOccupation" class="form-input" placeholder="e.g. Farmer, Student, Daily Labourer">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regBpl" style="width:auto;margin:0">
+            BPL Card Holder?
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regDisabled" style="width:auto;margin:0">
+            Person with Disability?
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group" id="disabilityPctGroup" style="display:none">
+        <label class="form-label">Disability Percentage (%)</label>
+        <input type="number" id="regDisabilityPct" class="form-input" min="0" max="100" placeholder="e.g. 40">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="regOwnsLand" style="width:auto;margin:0">
+          Do you own agricultural land?
+        </label>
+      </div>
+
+      <div class="form-group" id="landAcresGroup" style="display:none">
+        <label class="form-label">Land Owned (in acres)</label>
+        <input type="number" id="regLandAcres" class="form-input" min="0" step="0.1" placeholder="e.g. 2.5">
+      </div>
+
+      <!-- ── Section 4: Family Details ─────────────────────────────── -->
+      <div class="form-section-title">Family Details</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Marital Status</label>
+          <select id="regMarital" class="form-select" required>
+            <option value="">Select</option>
+            <option value="UNMARRIED">Unmarried</option>
+            <option value="MARRIED">Married</option>
+            <option value="WIDOW">Widow / Widower</option>
+            <option value="DIVORCED">Divorced</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Family Members</label>
+          <input type="number" id="regFamilyMembers" class="form-input" min="1" placeholder="e.g. 4" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Number of Girl Children</label>
+        <input type="number" id="regGirlChildren" class="form-input" min="0" placeholder="e.g. 2">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regWidow" style="width:auto;margin:0">
+            Are you a widow?
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regSeniorCitizen" style="width:auto;margin:0">
+            Senior citizen in family?
+          </label>
+        </div>
+      </div>
+
+      <!-- ── Section 5: Documents & Benefits ───────────────────────── -->
+      <div class="form-section-title">Documents &amp; Entitlements</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regAadhaar" style="width:auto;margin:0">
+            Aadhaar linked to bank?
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regBankAccount" style="width:auto;margin:0">
+            Bank account holder?
+          </label>
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Annual Income (₹)</label><input type="number" id="regIncome" class="form-input" min="0" placeholder="e.g. 150000" required></div>
-        <div class="form-group"><label class="form-label">Category</label>
-          <select id="regCategory" class="form-select" required><option value="">Select</option><option value="BPL">BPL</option><option value="APL">APL</option><option value="SC">SC</option><option value="ST">ST</option><option value="OBC">OBC</option><option value="GENERAL">General</option><option value="MINORITY">Minority</option></select>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regRationCard" style="width:auto;margin:0">
+            Have ration card?
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="regHealthInsurance" style="width:auto;margin:0">
+            Have health insurance?
+          </label>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Marital Status</label>
-        <select id="regMarital" class="form-select" required><option value="">Select</option><option value="UNMARRIED">Unmarried</option><option value="MARRIED">Married</option><option value="WIDOW">Widow</option></select>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Village / Locality</label><input type="text" id="regVillage" class="form-input" placeholder="e.g. Hanumanamatti"></div>
-        <div class="form-group"><label class="form-label">Pincode</label><input type="text" id="regPincode" class="form-input" maxlength="6" placeholder="6 digits" required></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">District</label><input type="text" id="regDistrict" class="form-input" placeholder="e.g. Haveri"></div>
-        <div class="form-group"><label class="form-label">State</label><input type="text" id="regState" class="form-input" placeholder="e.g. Karnataka" required></div>
-      </div>
-      <button type="submit" class="btn btn-primary">Create Account</button>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:8px">Create Account</button>
     </form>
   </main>
 </div>
+
 <script src="/js/common.js"></script>
 <script src="/js/auth.js"></script>
-</body></html>
+</body>
+</html>

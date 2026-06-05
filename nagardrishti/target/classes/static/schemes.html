@@ -1,49 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>My Schemes — NagarDrishti</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Schemes — NagarDrishti</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
 <nav class="navbar">
   <div class="nav-brand"><span class="ico">N</span>NagarDrishti</div>
   <div class="nav-links">
     <a href="/schemes.html" class="nav-link active">My Schemes</a>
     <a href="/projects.html" class="nav-link">Local Projects</a>
+
+    <!-- Notification Bell -->
+    <div class="notif-wrapper" id="notifWrapper">
+      <button class="notif-bell" id="notifBell" title="Notifications">
+        🔔
+        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-header">
+          <span class="notif-header-title">Notifications</span>
+          <button class="notif-clear" id="notifClear">Clear all</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <div class="notif-empty">No new notifications</div>
+        </div>
+      </div>
+    </div>
+
     <div class="nav-user">
       <span class="nav-user-name" id="navUserName">User</span>
       <button class="btn-logout" id="btnLogout">Logout</button>
     </div>
   </div>
 </nav>
+
 <div class="container">
   <div class="page-header">
-    <h1 class="page-title">Your Eligible Schemes</h1>
-    <p class="page-subtitle">Government welfare schemes matched to your profile. Click any card to view details and citizen feedback.</p>
+    <h1 class="page-title">Government Schemes</h1>
+    <p class="page-subtitle">See schemes you qualify for, or search the full database of 4700+ schemes.</p>
   </div>
-  <div class="stats-grid">
-    <div class="stat-card highlight"><div class="stat-label">Eligible Schemes</div><div class="stat-value" id="statCount">—</div><div class="stat-sub">Matched to your profile</div></div>
-    <div class="stat-card success"><div class="stat-label">Total Potential Benefit</div><div class="stat-value" id="statBenefit">—</div><div class="stat-sub">If you claim all</div></div>
-    <div class="stat-card"><div class="stat-label">Your State</div><div class="stat-value" id="statLocation" style="font-size:1.1rem">—</div><div class="stat-sub" id="statPincode">—</div></div>
+
+  <!-- Tab bar -->
+  <div class="scheme-tabs">
+    <button class="scheme-tab active" data-tab="eligible">⭐ My Eligible Schemes</button>
+    <button class="scheme-tab"        data-tab="browse">🔍 Browse All Schemes</button>
   </div>
-  <div class="filter-bar">
-    <span style="font-size:.85rem;font-weight:600;color:var(--gray-700)">Filter:</span>
-    <button class="filter-chip active" data-category="ALL">All</button>
-    <button class="filter-chip" data-category="WOMEN">Women</button>
-    <button class="filter-chip" data-category="FARMER">Farmer</button>
-    <button class="filter-chip" data-category="STUDENT">Student</button>
-    <button class="filter-chip" data-category="ELDERLY">Elderly</button>
-    <button class="filter-chip" data-category="HOUSING">Housing</button>
-    <button class="filter-chip" data-category="HEALTH">Health</button>
+
+  <!-- TAB 1 — MY ELIGIBLE SCHEMES -->
+  <div id="eligibleSection">
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="stat-label">Eligible Schemes</div>
+        <div class="stat-value" id="statCount">—</div>
+        <div class="stat-sub">Matched to your profile</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Total Potential Benefit</div>
+        <div class="stat-value" id="statBenefit">—</div>
+        <div class="stat-sub">If you claim all</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Your State</div>
+        <div class="stat-value" id="statLocation" style="font-size:1.1rem">—</div>
+        <div class="stat-sub" id="statPincode">—</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <span style="font-size:.82rem;font-weight:600;color:var(--gray-700)">Filter:</span>
+      <button class="filter-chip active" data-category="ALL">All</button>
+      <button class="filter-chip" data-category="Agriculture">Agriculture</button>
+      <button class="filter-chip" data-category="Social welfare & Empowerment">Social Welfare</button>
+      <button class="filter-chip" data-category="Education">Education</button>
+      <button class="filter-chip" data-category="Health">Health</button>
+      <button class="filter-chip" data-category="Women">Women</button>
+      <button class="filter-chip" data-category="Housing">Housing</button>
+      <button class="filter-chip" data-category="Finance">Finance</button>
+    </div>
+
+    <div id="schemesContainer">
+      <div class="loading"><div class="spinner"></div><div>Finding schemes for you…</div></div>
+    </div>
   </div>
-  <div id="schemesContainer"><div class="loading"><div class="spinner"></div><div>Finding schemes for you...</div></div></div>
+
+  <!-- TAB 2 — BROWSE ALL SCHEMES -->
+  <div id="browseSection" style="display:none">
+    <p style="font-size:.88rem;color:var(--gray-500);margin-bottom:14px">
+      Search across <strong>4700+</strong> active government schemes by name, tag, or keyword.
+    </p>
+    <div style="margin-bottom:6px">
+      <input type="text" id="schemeSearch" class="search-input"
+             placeholder="e.g. farmer, scholarship, pension, housing, widow…"
+             autocomplete="off">
+    </div>
+    <div id="searchHint"
+         style="display:none;font-size:.82rem;color:var(--gray-500);margin-bottom:16px">
+      Type at least 3 characters to search…
+    </div>
+    <div id="browseContainer"></div>
+  </div>
 </div>
 
+<!-- SCHEME DETAIL MODAL -->
 <div class="modal-overlay" id="schemeModal">
   <div class="modal">
     <div class="modal-header">
-      <div><div class="modal-title" id="modalTitle"></div><div class="card-sub" id="modalShortName"></div></div>
+      <div style="min-width:0">
+        <div class="modal-title"  id="modalTitle"></div>
+        <div class="card-sub"     id="modalShortName"></div>
+      </div>
       <button class="modal-close" id="modalClose">×</button>
     </div>
     <div class="modal-body" id="modalBody"></div>
@@ -53,4 +122,5 @@
 <script src="/js/common.js"></script>
 <script src="/js/feedback.js"></script>
 <script src="/js/schemes.js"></script>
-</body></html>
+</body>
+</html>
