@@ -5,72 +5,130 @@ const user = Session.get();
 if (!user || !user.userId) { Session.clear(); location.href = "/index.html"; }
 
 // ============================================================
-// NOTIFICATION BELL
+// NOTIFICATION BELL — persists until user clears
 // ============================================================
+
+// Separate localStorage key so notifications survive page refreshes
+var NOTIF_KEY = "nd_notifications_" + (user.userId || "");
+
+function loadStoredNotifications() {
+    try {
+        var raw = localStorage.getItem(NOTIF_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+}
+
+function saveNotifications(count, names) {
+    try {
+        localStorage.setItem(NOTIF_KEY, JSON.stringify({ count: count, names: names }));
+    } catch(e) {}
+}
+
+function clearNotifications() {
+    try { localStorage.removeItem(NOTIF_KEY); } catch(e) {}
+    // Also clear from session so login response doesn't re-trigger
+    var u = Session.get();
+    if (u) { u.newSchemesCount = 0; u.newSchemeNames = []; Session.set(u); }
+}
+
 function initNotifications() {
-    var count     = user.newSchemesCount || 0;
-    var names     = user.newSchemeNames  || [];
-    var bell      = document.getElementById("notifBell");
-    var badge     = document.getElementById("notifBadge");
-    var dropdown  = document.getElementById("notifDropdown");
-    var list      = document.getElementById("notifList");
-    var clearBtn  = document.getElementById("notifClear");
-    var wrapper   = document.getElementById("notifWrapper");
+    var bell     = document.getElementById("notifBell");
+    var badge    = document.getElementById("notifBadge");
+    var dropdown = document.getElementById("notifDropdown");
+    var list     = document.getElementById("notifList");
+    var clearBtn = document.getElementById("notifClear");
+    var wrapper  = document.getElementById("notifWrapper");
 
-    // Show badge if there are new schemes
-    if (count > 0) {
-        badge.textContent = count > 9 ? "9+" : count;
-        badge.style.display = "flex";
-        bell.classList.add("notif-bell-active");
+    // Merge: new schemes from this login + existing stored notifications
+    var stored   = loadStoredNotifications();
+    var newCount = user.newSchemesCount || 0;
+    var newNames = user.newSchemeNames  || [];
 
-        // Build notification items
-        list.innerHTML = "";
+    var totalCount, totalNames;
 
-        // Header notification item
-        var headerItem = document.createElement("div");
-        headerItem.className = "notif-item notif-item-new";
-        headerItem.innerHTML =
-            '<div class="notif-item-icon">ℹ️</div>' +
-            '<div class="notif-item-body">' +
-                '<div class="notif-item-title">' + count + ' new scheme' + (count > 1 ? 's' : '') + ' matched your profile</div>' +
-                '<div class="notif-item-sub">Added since your last visit</div>' +
-            '</div>';
-        list.appendChild(headerItem);
+    if (newCount > 0) {
+        // New schemes arrived on this login — merge with stored ones
+        var storedCount = stored ? stored.count : 0;
+        var storedNames = stored ? stored.names : [];
 
-        // Individual scheme items (up to 5)
-        names.forEach(function(name) {
-            var item = document.createElement("div");
-            item.className = "notif-item";
-            item.innerHTML =
-                '<div class="notif-item-icon">🆕</div>' +
-                '<div class="notif-item-body">' +
-                    '<div class="notif-item-title">' + esc(name) + '</div>' +
-                    '<div class="notif-item-sub">New eligible scheme — tap to view</div>' +
-                '</div>';
-            item.addEventListener("click", function() {
-                dropdown.classList.remove("show");
-                // Switch to eligible tab so user can see the new scheme
-                document.querySelector("[data-tab='eligible']").click();
-            });
-            list.appendChild(item);
+        // Merge names without duplicates
+        var mergedNames = storedNames.slice();
+        newNames.forEach(function(n) {
+            if (mergedNames.indexOf(n) === -1) mergedNames.push(n);
         });
 
-        // If more than 5
-        if (count > names.length) {
-            var moreItem = document.createElement("div");
-            moreItem.className = "notif-item";
-            moreItem.innerHTML =
-                '<div class="notif-item-icon">🆕</div>' +
-                '<div class="notif-item-body">' +
-                    '<div class="notif-item-title">+' + (count - names.length) + ' more new schemes</div>' +
-                    '<div class="notif-item-sub">View all in My Eligible Schemes tab</div>' +
-                '</div>';
-            list.appendChild(moreItem);
-        }
+        totalCount = storedCount + newCount;
+        totalNames = mergedNames;
 
+        // Save merged result to localStorage
+        saveNotifications(totalCount, totalNames);
+
+    } else if (stored) {
+        // No new schemes this login but old ones still pending
+        totalCount = stored.count;
+        totalNames = stored.names;
     } else {
-        list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+        totalCount = 0;
+        totalNames = [];
     }
+
+    // Build the dropdown UI
+    function buildUI() {
+        if (totalCount > 0) {
+            badge.textContent    = totalCount > 9 ? "9+" : totalCount;
+            badge.style.display  = "flex";
+            bell.classList.add("notif-bell-active");
+            list.innerHTML = "";
+
+            // Summary header item
+            var headerItem = document.createElement("div");
+            headerItem.className = "notif-item notif-item-new";
+            headerItem.innerHTML =
+                '<div class="notif-item-icon">ℹ️</div>' +
+                '<div class="notif-item-body">' +
+                    '<div class="notif-item-title">' + totalCount + ' new scheme' + (totalCount > 1 ? 's' : '') + ' matched your profile</div>' +
+                    '<div class="notif-item-sub">Tap a scheme below or go to My Eligible Schemes</div>' +
+                '</div>';
+            list.appendChild(headerItem);
+
+            // Individual scheme name items (up to 5)
+            totalNames.slice(0, 5).forEach(function(name) {
+                var item = document.createElement("div");
+                item.className = "notif-item";
+                item.innerHTML =
+                    '<div class="notif-item-icon">🆕</div>' +
+                    '<div class="notif-item-body">' +
+                        '<div class="notif-item-title">' + esc(name) + '</div>' +
+                        '<div class="notif-item-sub">New eligible scheme — tap to view</div>' +
+                    '</div>';
+                item.addEventListener("click", function() {
+                    dropdown.classList.remove("show");
+                    document.querySelector("[data-tab='eligible']").click();
+                });
+                list.appendChild(item);
+            });
+
+            // Show "+N more" if needed
+            if (totalCount > totalNames.slice(0, 5).length) {
+                var moreItem = document.createElement("div");
+                moreItem.className = "notif-item";
+                moreItem.innerHTML =
+                    '<div class="notif-item-icon">🆕</div>' +
+                    '<div class="notif-item-body">' +
+                        '<div class="notif-item-title">+' + (totalCount - totalNames.slice(0, 5).length) + ' more new schemes</div>' +
+                        '<div class="notif-item-sub">View all in My Eligible Schemes tab</div>' +
+                    '</div>';
+                list.appendChild(moreItem);
+            }
+
+        } else {
+            badge.style.display = "none";
+            bell.classList.remove("notif-bell-active");
+            list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+        }
+    }
+
+    buildUI();
 
     // Toggle dropdown on bell click
     bell.addEventListener("click", function(e) {
@@ -78,25 +136,18 @@ function initNotifications() {
         dropdown.classList.toggle("show");
     });
 
-    // Close dropdown when clicking outside
+    // Close when clicking outside
     document.addEventListener("click", function(e) {
-        if (!wrapper.contains(e.target)) {
-            dropdown.classList.remove("show");
-        }
+        if (!wrapper.contains(e.target)) dropdown.classList.remove("show");
     });
 
-    // Clear all — hides badge and empties list
+    // Clear all — removes from localStorage permanently
     clearBtn.addEventListener("click", function() {
-        badge.style.display = "none";
-        badge.textContent   = "0";
-        bell.classList.remove("notif-bell-active");
-        list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+        totalCount = 0;
+        totalNames = [];
+        clearNotifications();
+        buildUI();
         dropdown.classList.remove("show");
-        // Clear from session so it doesn't come back on page refresh
-        var u = Session.get();
-        u.newSchemesCount = 0;
-        u.newSchemeNames  = [];
-        Session.set(u);
     });
 }
 
