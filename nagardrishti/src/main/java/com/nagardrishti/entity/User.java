@@ -8,25 +8,26 @@ import java.time.LocalDateTime;
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class User {
 
-    @Id @Column(length = 36)
-    private String id;
+    @Id @Column(length = 36) private String id;
 
-    // ── Core / Auth ──────────────────────────────────────────────────────────
+    // Core / Auth
     @Column(nullable = false, length = 100)  private String fullName;
     @Column(unique = true, length = 15, nullable = false) private String phoneNumber;
     @Column(unique = true, length = 100)     private String email;
     @Column(nullable = false, length = 100)  private String passwordHash;
 
-    // ── Personal ─────────────────────────────────────────────────────────────
+    // Personal
     @Column private Integer age;
     @Column(length = 10)  private String gender;
 
-    // ── Location ─────────────────────────────────────────────────────────────
+    // Location
     @Column(length = 100) private String state;
     @Column(length = 100) private String district;
     @Column(length = 10, nullable = false) private String pincode;
+    @Column(length = 100) private String ward;
+    @Column(length = 100) private String zone;    // ← NEW e.g. "Bengaluru South"
 
-    // ── Socio-Economic ───────────────────────────────────────────────────────
+    // Socio-Economic
     @Column(length = 20)  private String category;
     @Column               private Double annualIncome;
     @Column @Builder.Default private Boolean bpl = false;
@@ -37,26 +38,24 @@ public class User {
     @Column @Builder.Default private Boolean ownsLand = false;
     @Column               private Double landInAcres;
 
-    // ── Family ───────────────────────────────────────────────────────────────
+    // Family
     @Column(length = 20)  private String maritalStatus;
     @Column               private Integer familyMembers;
     @Column @Builder.Default private Boolean widow = false;
     @Column @Builder.Default private Boolean seniorCitizenInFamily = false;
     @Column @Builder.Default private Integer girlChildrenCount = 0;
 
-    // ── Documents / Entitlements ──────────────────────────────────────────────
+    // Documents
     @Column @Builder.Default private Boolean aadhaarLinked   = false;
     @Column @Builder.Default private Boolean bankAccount     = false;
     @Column @Builder.Default private Boolean rationCard      = false;
     @Column @Builder.Default private Boolean healthInsurance = false;
 
-    // ── System ───────────────────────────────────────────────────────────────
+    // System
     @Column private LocalDateTime registeredDate;
-    @Column private LocalDateTime lastLoginAt;      // ← NEW: tracks last login for notifications
+    @Column private LocalDateTime lastLoginAt;
 
-    @Column(length = 20)
-    @Builder.Default
-    private String role = "USER";
+    @Column(length = 20) @Builder.Default private String role = "USER";
 
     @PrePersist
     public void beforePersist() {

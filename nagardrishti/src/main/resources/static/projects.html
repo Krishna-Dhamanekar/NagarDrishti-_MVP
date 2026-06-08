@@ -1,56 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Local Projects — NagarDrishti</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
 <nav class="navbar">
   <div class="nav-brand"><span class="ico">N</span>NagarDrishti</div>
   <div class="nav-links">
     <a href="/schemes.html" class="nav-link">My Schemes</a>
     <a href="/projects.html" class="nav-link active">Local Projects</a>
+    <div class="notif-wrapper" id="notifWrapper">
+      <button class="notif-bell" id="notifBell" title="Notifications">
+        🔔
+        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+      </button>
+      <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-header">
+          <span class="notif-header-title">Notifications</span>
+          <button class="notif-clear" id="notifClear">Clear all</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <div class="notif-empty">No new notifications</div>
+        </div>
+      </div>
+    </div>
     <div class="nav-user">
       <span class="nav-user-name" id="navUserName">User</span>
       <button class="btn-logout" id="btnLogout">Logout</button>
     </div>
   </div>
 </nav>
+
 <div class="container">
+
   <div class="page-header">
-    <h1 class="page-title">Government Projects Near You</h1>
-    <p class="page-subtitle">Enter your pincode to see all projects, budgets, and citizen complaints. Try 581115 for demo data.</p>
+    <h1 class="page-title">Government Projects</h1>
+    <p class="page-subtitle">Track projects in your area or browse all Bengaluru projects.</p>
   </div>
-  <div class="filter-bar" style="margin-bottom:24px">
-    <span style="font-size:.85rem;font-weight:600;color:var(--gray-700)">Pincode:</span>
-    <input type="text" id="pincodeInput" class="search-input" maxlength="6" placeholder="e.g. 581115">
-    <button class="btn btn-sky" id="btnSearch">Search</button>
+
+  <!-- Tab bar -->
+  <div class="scheme-tabs">
+    <button class="scheme-tab active" data-tab="myarea">📍 My Area Projects</button>
+    <button class="scheme-tab"        data-tab="browse">🔍 Browse All Projects</button>
   </div>
-  <div class="stats-grid" id="statsGrid" style="display:none">
-    <div class="stat-card highlight"><div class="stat-label">Total Projects</div><div class="stat-value" id="statTotal">0</div><div class="stat-sub">In this pincode</div></div>
-    <div class="stat-card"><div class="stat-label">Total Budget</div><div class="stat-value" id="statBudget" style="font-size:1.35rem">₹0</div><div class="stat-sub" id="statSpent">Spent: ₹0</div></div>
-    <div class="stat-card success"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
-    <div class="stat-card warning"><div class="stat-label">In Progress</div><div class="stat-value" id="statProgress">0</div></div>
-    <div class="stat-card danger"><div class="stat-label">Delayed</div><div class="stat-value" id="statDelayed">0</div></div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TAB 1 — MY AREA PROJECTS                           -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div id="myAreaSection">
+
+    <!-- Stats -->
+    <div class="stats-grid" id="myAreaStats" style="display:none">
+      <div class="stat-card highlight">
+        <div class="stat-label">Total Projects</div>
+        <div class="stat-value" id="maStatTotal">0</div>
+        <div class="stat-sub" id="maStatArea">In your area</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Estimated Value</div>
+        <div class="stat-value" id="maStatBudget" style="font-size:1.2rem">₹0</div>
+        <div class="stat-sub" id="maStatAwarded">Awarded: ₹0</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="maStatCompleted">0</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" id="maStatProgress">0</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Delayed</div>
+        <div class="stat-value" id="maStatDelayed">0</div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div id="chartsRow" style="display:none;margin-bottom:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- Status donut chart -->
+        <div class="card" style="padding:20px">
+          <div style="font-weight:700;color:var(--royal);margin-bottom:14px;font-size:.9rem">
+            Project Status
+          </div>
+          <div style="display:flex;align-items:center;gap:20px">
+            <canvas id="statusDonut" width="120" height="120"></canvas>
+            <div id="statusLegend" style="flex:1;font-size:.8rem"></div>
+          </div>
+        </div>
+
+        <!-- Budget bar chart -->
+        <div class="card" style="padding:20px">
+          <div style="font-weight:700;color:var(--royal);margin-bottom:14px;font-size:.9rem">
+            Budget Overview
+          </div>
+          <div id="budgetChart"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Category filter -->
+    <div class="filter-bar" id="myAreaFilterBar" style="display:none">
+      <span style="font-size:.82rem;font-weight:600;color:var(--gray-700)">Category:</span>
+      <button class="filter-chip active" data-tab="myarea" data-value="ALL">All</button>
+      <button class="filter-chip" data-tab="myarea" data-value="Works">Works</button>
+      <button class="filter-chip" data-tab="myarea" data-value="Civil Works">Civil Works</button>
+      <button class="filter-chip" data-tab="myarea" data-value="ROAD">Road</button>
+      <button class="filter-chip" data-tab="myarea" data-value="WATER">Water</button>
+      <button class="filter-chip" data-tab="myarea" data-value="HEALTH">Health</button>
+      <button class="filter-chip" data-tab="myarea" data-value="HOUSING">Housing</button>
+    </div>
+
+    <div id="myAreaContainer">
+      <div class="loading"><div class="spinner"></div><div>Loading your area projects…</div></div>
+    </div>
   </div>
-  <div class="filter-bar" id="filterBar" style="display:none">
-    <span style="font-size:.85rem;font-weight:600;color:var(--gray-700)">Category:</span>
-    <button class="filter-chip active" data-value="ALL">All</button>
-    <button class="filter-chip" data-value="ROAD">Road</button>
-    <button class="filter-chip" data-value="WATER">Water</button>
-    <button class="filter-chip" data-value="HEALTH">Health</button>
-    <button class="filter-chip" data-value="HOUSING">Housing</button>
-    <button class="filter-chip" data-value="SCHOOL">School</button>
-    <button class="filter-chip" data-value="WOMEN">Women</button>
-    <button class="filter-chip" data-value="AGRICULTURE">Agriculture</button>
-    <button class="filter-chip" data-value="ELECTRICITY">Electricity</button>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TAB 2 — BROWSE ALL PROJECTS                        -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div id="browseSection" style="display:none">
+
+    <p style="font-size:.88rem;color:var(--gray-500);margin-bottom:16px">
+      Search projects across Bengaluru by pincode, zone, or both.
+    </p>
+
+    <!-- Dual search input -->
+    <div class="card" style="padding:18px;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Pincode</label>
+          <input type="text" id="browsePin" class="form-input" maxlength="6"
+                 placeholder="e.g. 560034">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Zone</label>
+          <input type="text" id="browseZone" class="form-input"
+                 placeholder="e.g. Bengaluru South">
+        </div>
+        <button class="btn btn-sky" id="btnBrowse"
+                style="width:auto;padding:10px 20px;margin-bottom:0">Search</button>
+      </div>
+      <div style="font-size:.75rem;color:var(--gray-500);margin-top:8px">
+        💡 Enter pincode, zone, or both for more precise results
+      </div>
+    </div>
+
+    <!-- Browse stats -->
+    <div class="stats-grid" id="browseStats" style="display:none;margin-bottom:20px">
+      <div class="stat-card highlight">
+        <div class="stat-label">Total Projects</div>
+        <div class="stat-value" id="brStatTotal">0</div>
+        <div class="stat-sub" id="brStatArea">Found</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Estimated Value</div>
+        <div class="stat-value" id="brStatBudget" style="font-size:1.2rem">₹0</div>
+        <div class="stat-sub" id="brStatAwarded">Awarded: ₹0</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="brStatCompleted">0</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" id="brStatProgress">0</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Delayed</div>
+        <div class="stat-value" id="brStatDelayed">0</div>
+      </div>
+    </div>
+
+    <!-- Browse filter -->
+    <div class="filter-bar" id="browseFilterBar" style="display:none">
+      <span style="font-size:.82rem;font-weight:600;color:var(--gray-700)">Category:</span>
+      <button class="filter-chip active" data-tab="browse" data-value="ALL">All</button>
+      <button class="filter-chip" data-tab="browse" data-value="Works">Works</button>
+      <button class="filter-chip" data-tab="browse" data-value="Civil Works">Civil Works</button>
+      <button class="filter-chip" data-tab="browse" data-value="ROAD">Road</button>
+      <button class="filter-chip" data-tab="browse" data-value="WATER">Water</button>
+      <button class="filter-chip" data-tab="browse" data-value="HEALTH">Health</button>
+      <button class="filter-chip" data-tab="browse" data-value="HOUSING">Housing</button>
+    </div>
+
+    <div id="browseContainer">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">Search for projects</div>
+        <p>Enter a pincode, zone, or both to find government projects in that area.</p>
+      </div>
+    </div>
   </div>
-  <div id="projectsContainer">
-    <div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">Enter a pincode to begin</div><p>Try 581115 for sample data from our pilot village.</p></div>
-  </div>
+
 </div>
 <script src="/js/common.js"></script>
 <script src="/js/feedback.js"></script>
 <script src="/js/projects.js"></script>
-</body></html>
+</body>
+</html>

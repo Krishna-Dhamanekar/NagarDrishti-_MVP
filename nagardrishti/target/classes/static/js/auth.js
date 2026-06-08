@@ -66,6 +66,8 @@ regForm.addEventListener("submit", async e => {
         state:        document.getElementById("regState").value.trim(),
         district:     document.getElementById("regDistrict").value.trim() || null,
         pincode:      document.getElementById("regPincode").value.trim(),
+        zone:         document.getElementById("regZone").value.trim() || null,
+        ward:         document.getElementById("regWard").value.trim() || null,
 
         // Socio-economic
         category:        document.getElementById("regCategory").value,

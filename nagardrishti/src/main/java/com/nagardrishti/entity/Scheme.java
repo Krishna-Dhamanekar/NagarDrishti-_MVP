@@ -14,9 +14,9 @@ public class Scheme {
     @Id @Column(length = 50)
     private String id;
 
-    @Column(length = 100)  private String slug;
-    @Column(nullable = false, length = 255) private String name;
-    @Column(length = 100)  private String shortTitle;
+    @Column(length = 300)  private String slug;
+    @Column(nullable = false, columnDefinition = "TEXT") private String name;
+    @Column(length = 300)  private String shortTitle;
     @Column(columnDefinition = "TEXT") private String description;
     @Column(length = 20)   private String level;
     @Column(length = 50)   private String schemeFor;
@@ -47,7 +47,7 @@ public class Scheme {
 
     @Column(length = 30)   private String closeDate;
     @Column                private Integer priority;
-    @Column(length = 100)  private String benefitAmount;
+    @Column(columnDefinition = "TEXT") private String benefitAmount;
     @Column(columnDefinition = "TEXT") private String benefitType;
 
     // ── Eligibility ────────────────────────────────────────────────────────────
@@ -64,11 +64,11 @@ public class Scheme {
     @Builder.Default
     private List<String> eligibleCategories = new ArrayList<>();
 
-    @Column(length = 50)   private String occupation;
+    @Column(length = 200)  private String occupation;
     @Column @Builder.Default private Boolean requiresBpl        = false;
     @Column @Builder.Default private Boolean requiresDisability = false;
     @Column                private Double  maxLandAllowed;
-    @Column(length = 30)   private String targetEducationLevel;
+    @Column(length = 100)   private String targetEducationLevel;
 
     // ── Contact ────────────────────────────────────────────────────────────────
     @Column(length = 300)  private String officialWebsite;

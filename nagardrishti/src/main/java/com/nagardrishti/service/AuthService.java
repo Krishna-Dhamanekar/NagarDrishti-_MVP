@@ -1,6 +1,7 @@
 package com.nagardrishti.service;
 
 import com.nagardrishti.dto.*;
+import com.nagardrishti.entity.Project;
 import com.nagardrishti.entity.Scheme;
 import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.UserRepository;
@@ -17,19 +18,20 @@ import java.util.stream.Collectors;
 @Slf4j @Service
 public class AuthService {
 
-    private final UserRepository  userRepo;
-    private final PasswordEncoder passwordEncoder;
-    private final SchemeService   schemeService;
+    private final UserRepository    userRepo;
+    private final PasswordEncoder   passwordEncoder;
+    private final SchemeService     schemeService;
+    private final ProjectService    projectService;
 
-    // Manual constructor — @Lazy on SchemeService breaks the circular dependency.
-    // AuthService → SchemeService → AuthService would fail at startup without @Lazy.
     @Autowired
     public AuthService(UserRepository userRepo,
                        PasswordEncoder passwordEncoder,
-                       @Lazy SchemeService schemeService) {
+                       @Lazy SchemeService schemeService,
+                       @Lazy ProjectService projectService) {
         this.userRepo        = userRepo;
         this.passwordEncoder = passwordEncoder;
         this.schemeService   = schemeService;
+        this.projectService  = projectService;
     }
 
     // ── Register ──────────────────────────────────────────────────────────────
@@ -50,6 +52,8 @@ public class AuthService {
                 .state(req.getState())
                 .district(req.getDistrict())
                 .pincode(req.getPincode())
+                .ward(req.getWard())
+                .zone(req.getZone())
                 .category(req.getCategory() != null ? req.getCategory().toUpperCase() : null)
                 .annualIncome(req.getAnnualIncome())
                 .bpl(Boolean.TRUE.equals(req.getBpl()))
@@ -74,7 +78,7 @@ public class AuthService {
 
         User saved = userRepo.save(user);
         log.info("New user registered: {} ({})", saved.getFullName(), saved.getId());
-        return toResponse(saved, "Registration successful", List.of());
+        return toResponse(saved, "Registration successful", List.of(), List.of());
     }
 
     // ── Login ─────────────────────────────────────────────────────────────────
@@ -85,20 +89,21 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash()))
             throw new IllegalArgumentException("Incorrect password.");
 
-        // Capture previous login BEFORE updating
         LocalDateTime previousLogin = user.getLastLoginAt();
-
-        // Update last login timestamp
         user.setLastLoginAt(LocalDateTime.now());
         userRepo.save(user);
 
-        // Find new eligible schemes since last login
+        // New eligible schemes since last login
         List<Scheme> newSchemes = schemeService.newEligibleSchemesSince(user, previousLogin);
 
-        log.info("User logged in: {} ({}) — {} new eligible schemes since last login",
-                user.getFullName(), user.getId(), newSchemes.size());
+        // New projects in user's area since last login
+        List<Project> newProjects = projectService.getNewProjectsSince(
+                previousLogin, user.getPincode(), user.getZone());
 
-        return toResponse(user, "Login successful", newSchemes);
+        log.info("User logged in: {} — {} new schemes, {} new projects",
+                user.getFullName(), newSchemes.size(), newProjects.size());
+
+        return toResponse(user, "Login successful", newSchemes, newProjects);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -107,17 +112,24 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
     }
 
-    private AuthResponse toResponse(User u, String msg, List<Scheme> newSchemes) {
-        List<String> names = newSchemes.stream()
-                .limit(5)
+    private AuthResponse toResponse(User u, String msg,
+                                    List<Scheme> newSchemes,
+                                    List<Project> newProjects) {
+        List<String> schemeNames = newSchemes.stream().limit(5)
                 .map(s -> s.getShortTitle() != null ? s.getShortTitle() : s.getName())
+                .collect(Collectors.toList());
+
+        List<String> projectNames = newProjects.stream().limit(5)
+                .map(p -> p.getName().length() > 60
+                        ? p.getName().substring(0, 57) + "..." : p.getName())
                 .collect(Collectors.toList());
 
         return AuthResponse.builder()
                 .userId(u.getId()).role(u.getRole()).message(msg)
                 .fullName(u.getFullName()).phoneNumber(u.getPhoneNumber()).email(u.getEmail())
                 .age(u.getAge()).gender(u.getGender())
-                .state(u.getState()).district(u.getDistrict()).pincode(u.getPincode())
+                .state(u.getState()).district(u.getDistrict())
+                .pincode(u.getPincode()).ward(u.getWard()).zone(u.getZone())
                 .category(u.getCategory()).annualIncome(u.getAnnualIncome()).bpl(u.getBpl())
                 .educationLevel(u.getEducationLevel()).occupation(u.getOccupation())
                 .disabled(u.getDisabled()).disabilityPercentage(u.getDisabilityPercentage())
@@ -127,8 +139,8 @@ public class AuthService {
                 .girlChildrenCount(u.getGirlChildrenCount())
                 .aadhaarLinked(u.getAadhaarLinked()).bankAccount(u.getBankAccount())
                 .rationCard(u.getRationCard()).healthInsurance(u.getHealthInsurance())
-                .newSchemesCount(newSchemes.size())
-                .newSchemeNames(names)
+                .newSchemesCount(newSchemes.size()).newSchemeNames(schemeNames)
+                .newProjectsCount(newProjects.size()).newProjectNames(projectNames)
                 .build();
     }
 }
