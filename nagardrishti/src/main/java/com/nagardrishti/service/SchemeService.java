@@ -41,14 +41,17 @@ public class SchemeService {
 
     public List<Scheme> search(String query) {
         if (query == null || query.trim().length() < 3) return List.of();
+
         String   fullQ = query.trim().toLowerCase();
         String[] words = fullQ.split("\\s+");
 
         LinkedHashMap<String, Scheme> resultMap = new LinkedHashMap<>();
         for (String word : words) {
-            if (word.length() >= 2)
+            if (word.length() >= 2) {
                 schemeRepo.searchActive(word).forEach(s -> resultMap.putIfAbsent(s.getId(), s));
+            }
         }
+
         schemeRepo.findByActiveTrue().stream()
                 .filter(s -> !resultMap.containsKey(s.getId()))
                 .filter(s -> anyWordMatches(words, s))
@@ -74,9 +77,9 @@ public class SchemeService {
 
     private int countWordMatches(String[] words, Scheme s) {
         int count = 0;
-        String hay = ((s.getName()       == null ? "" : s.getName()) + " " +
-                (s.getShortTitle() == null ? "" : s.getShortTitle()) + " " +
-                (s.getDescription()== null ? "" : s.getDescription())).toLowerCase();
+        String hay = ((s.getName()        == null ? "" : s.getName()) + " " +
+                (s.getShortTitle()  == null ? "" : s.getShortTitle()) + " " +
+                (s.getDescription() == null ? "" : s.getDescription())).toLowerCase();
         for (String w : words) {
             if (hay.contains(w) || listContains(s.getTags(), w) ||
                     listContains(s.getSchemeCategory(), w)) count++;
@@ -93,6 +96,10 @@ public class SchemeService {
     public EligibleSchemesResponse getEligibleSchemes(String userId) {
         User user = authService.getUserById(userId);
 
+        log.info("Eligibility check — user={} state={} category={} gender={} income={} occupation={}",
+                user.getFullName(), user.getState(), user.getCategory(),
+                user.getGender(), user.getAnnualIncome(), user.getOccupation());
+
         List<Scheme> eligible = schemeRepo.findByActiveTrue().stream()
                 .filter(s -> matchAge(s, user))
                 .filter(s -> matchGender(s, user))
@@ -104,13 +111,7 @@ public class SchemeService {
                 .filter(s -> matchLand(s, user))
                 .filter(s -> matchEducation(s, user))
                 .filter(s -> matchState(s, user))
-                // ── FIXED: minimum score raised to 2 ──────────────────────────────
-                // Score=1 only means age-range match which is too broad.
-                // Score=2 means at least one meaningful demographic match:
-                //   state match(+2), category match(+2), BPL match(+2),
-                //   disability(+2), occupation(+2), OR age+income(+1+1),
-                //   OR gender+income(+1+1), OR gender+age(+1+1), etc.
-                .filter(s -> positiveMatchScore(s, user) >= 2)
+                .filter(s -> positiveMatchScore(s, user) >= 1)
                 .sorted(Comparator
                         .comparingInt((Scheme s) -> positiveMatchScore(s, user)).reversed()
                         .thenComparingInt(s -> s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE))
@@ -120,7 +121,8 @@ public class SchemeService {
                 .mapToDouble(s -> parseBenefitAmount(s.getBenefitAmount()))
                 .sum();
 
-        log.info("Eligible schemes for user {} ({}): {}", user.getFullName(), userId, eligible.size());
+        log.info("Eligible schemes for user {} ({}): {} | totalBenefit={}",
+                user.getFullName(), userId, eligible.size(), totalBenefit);
 
         return EligibleSchemesResponse.builder()
                 .totalEligibleSchemes(eligible.size())
@@ -144,27 +146,23 @@ public class SchemeService {
                 .filter(s -> matchLand(s, user))
                 .filter(s -> matchEducation(s, user))
                 .filter(s -> matchState(s, user))
-                .filter(s -> positiveMatchScore(s, user) >= 2)
+                .filter(s -> positiveMatchScore(s, user) >= 1)
                 .sorted(byPriority())
                 .limit(20)
                 .collect(Collectors.toList());
     }
 
-    // ── Positive match scoring ────────────────────────────────────────────────
-    // Each criterion that SPECIFICALLY targets the user adds points.
-    // Minimum 2 required to show in My Eligible tab.
+    // ── Positive match score ──────────────────────────────────────────────────
 
     private int positiveMatchScore(Scheme s, User u) {
         int score = 0;
 
-        // State-level scheme for user's state (+1)
-        // +1 not +2 so state-only broad schemes don't flood My Eligible.
-        // Combined with another criterion (gender/category/BPL) it reaches >=2.
+        // State-level scheme matching user's state (+2)
         if ("State".equalsIgnoreCase(s.getLevel())
                 && u.getState() != null
                 && s.getBeneficiaryState() != null
                 && s.getBeneficiaryState().stream().anyMatch(st -> st.equalsIgnoreCase(u.getState())))
-            score += 1;
+            score += 2;
 
         // Category-specific scheme matching user (+2)
         if (s.getEligibleCategories() != null && !s.getEligibleCategories().isEmpty()
@@ -230,7 +228,7 @@ public class SchemeService {
 
     private boolean matchIncome(Scheme s, User u) {
         if (s.getMaxIncome() == null) return true;
-        if (u.getAnnualIncome() == null) return false;
+        if (u.getAnnualIncome() == null) return true; // unknown income = give benefit of doubt
         return u.getAnnualIncome() <= s.getMaxIncome();
     }
 
@@ -246,7 +244,7 @@ public class SchemeService {
 
     private boolean matchCategory(Scheme s, User u) {
         if (s.getEligibleCategories() == null || s.getEligibleCategories().isEmpty()) return true;
-        if (u.getCategory() == null) return false;
+        if (u.getCategory() == null) return true; // unknown category = give benefit of doubt
         return s.getEligibleCategories().stream().anyMatch(c -> c.equalsIgnoreCase(u.getCategory()));
     }
 
@@ -257,7 +255,7 @@ public class SchemeService {
 
     private boolean matchLand(Scheme s, User u) {
         if (s.getMaxLandAllowed() == null) return true;
-        if (u.getLandInAcres() == null) return false;
+        if (u.getLandInAcres() == null) return true; // unknown land = give benefit of doubt
         return u.getLandInAcres() <= s.getMaxLandAllowed();
     }
 
@@ -267,13 +265,14 @@ public class SchemeService {
     }
 
     private boolean matchState(Scheme s, User u) {
+        if (s.getLevel() == null || s.getLevel().isBlank()) return true;
         if ("Central".equalsIgnoreCase(s.getLevel())) return true;
         if ("State".equalsIgnoreCase(s.getLevel())) {
-            if (u.getState() == null) return false;
-            if (s.getBeneficiaryState() == null || s.getBeneficiaryState().isEmpty()) return false;
+            if (u.getState() == null) return true; // unknown state = give benefit of doubt
+            if (s.getBeneficiaryState() == null || s.getBeneficiaryState().isEmpty()) return true;
             return s.getBeneficiaryState().stream().anyMatch(st -> st.equalsIgnoreCase(u.getState()));
         }
-        return false;
+        return true; // any other level = pass through
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -283,32 +282,23 @@ public class SchemeService {
                 s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE);
     }
 
-    /**
-     * FIXED: Parse Indian currency strings to double.
-     *
-     * Bug was: "\\u20b9" in Java String = literal chars \u20b9 (NOT ₹ symbol).
-     * Fix:     "\u20b9"  (single backslash) = compile-time Unicode escape = ₹ character.
-     *
-     * Handles: "₹5,000", "₹1,00,000", "₹5 lakh", "Rs. 10,000",
-     *          "₹1.5 crore", "Free service" (→ 0), null (→ 0)
-     */
     private double parseBenefitAmount(String raw) {
         if (raw == null || raw.isBlank()) return 0;
 
-        // Check for scale words BEFORE cleaning
         String lower = raw.toLowerCase();
         boolean isLakh  = lower.contains("lakh") || lower.contains(" lac");
         boolean isCrore = lower.contains("crore") || lower.contains(" cr");
+        boolean isMonthly = lower.contains("/month") || lower.contains("per month") || lower.contains("monthly");
 
-        // Remove ₹ symbol (correct Unicode escape \u20b9 → actual ₹ char)
+        // Remove currency symbols and formatting
+        // NOTE: "\u20b9" (single backslash) = actual ₹ character at compile time
         String cleaned = raw
-                .replace("\u20b9", "")           // ₹ symbol (correct single-backslash escape)
-                .replaceAll("(?i)rs\\.?\\s*", "") // Rs. or Rs
-                .replaceAll("(?i)inr\\s*", "")    // INR prefix
-                .replaceAll(",", "")              // Indian number commas: 1,00,000 → 100000
+                .replace("\u20b9", "")
+                .replaceAll("(?i)rs\\.?\\s*", "")
+                .replaceAll("(?i)inr\\s*", "")
+                .replaceAll(",", "")
                 .trim();
 
-        // Extract first number (integer or decimal)
         java.util.regex.Matcher m =
                 java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)").matcher(cleaned);
         if (!m.find()) return 0;
@@ -317,6 +307,9 @@ public class SchemeService {
 
         if      (isCrore) val *= 10_000_000;
         else if (isLakh)  val *= 100_000;
+
+        // Annualise monthly amounts
+        if (isMonthly) val *= 12;
 
         return val;
     }
