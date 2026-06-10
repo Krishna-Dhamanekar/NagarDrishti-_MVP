@@ -1,7 +1,9 @@
 package com.nagardrishti.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,15 +19,30 @@ public class Scheme {
     @Column(length = 36)
     private String id;
 
+    @Column(length = 100) // REMOVED unique = true so multiple schemes can share the same slug
+    private String slug;
+
     // ── Core Details ─────────────────────────────────────────────────────────
-    @Column(nullable = false, length = 255)
-    private String name; // Changed from title to name to fix your compilation errors!
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String shortTitle;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(length = 100)
+    @Column(columnDefinition = "TEXT")
+    private String level;
+
+    @Column(columnDefinition = "TEXT")
+    private String schemeFor;
+
+    @Column(columnDefinition = "TEXT")
     private String benefitAmount;
+
+    @Column(columnDefinition = "TEXT")
+    private String benefitType;
 
     @Builder.Default
     @Column(nullable = false)
@@ -38,20 +55,25 @@ public class Scheme {
     @Column(name = "category")
     private List<String> schemeCategory;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "scheme_tags", joinColumns = @JoinColumn(name = "scheme_id"))
+    @Column(name = "tag")
+    private List<String> tags;
+
     // ── Location Details ─────────────────────────────────────────────────────
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "scheme_states", joinColumns = @JoinColumn(name = "scheme_id"))
     @Column(name = "state")
     private List<String> beneficiaryState;
 
-    @Column(length = 100)
+    @Column(columnDefinition = "TEXT")
     private String beneficiaryDistrict;
 
-    // ── Demographic Limits (Hard Limits) ─────────────────────────────────────
+    // ── Demographic & Eligibility Limits ─────────────────────────────────────
     private Integer minAge;
     private Integer maxAge;
 
-    @Column(length = 10)
+    @Column(columnDefinition = "TEXT")
     private String gender;
 
     private Double maxIncome;
@@ -63,20 +85,18 @@ public class Scheme {
 
     private Double maxLandAllowed;
 
-    // ── Socio-Economic Matchers ──────────────────────────────────────────────
-    @Column(length = 30)
+    @Column(columnDefinition = "TEXT")
     private String targetEducationLevel;
 
-    @Column(length = 50)
+    @Column(columnDefinition = "TEXT")
     private String occupation;
 
-    @Column(length = 20)
+    @Column(columnDefinition = "TEXT")
     private String maritalStatus;
 
-    // ── Vulnerability & Special Targets ──────────────────────────────────────
+    // ── Vulnerability Indicators ─────────────────────────────────────────────
     @Builder.Default private Boolean requiresBpl = false;
     @Builder.Default private Boolean requiresDisability = false;
-
     @Builder.Default private Boolean targetsWidows = false;
     @Builder.Default private Boolean targetsGirlChild = false;
     @Builder.Default private Boolean targetsSeniorCitizens = false;
@@ -86,12 +106,21 @@ public class Scheme {
     @Builder.Default private Boolean requiresBankAccount = false;
     @Builder.Default private Boolean requiresAadhaarLinkedBank = false;
 
-    // ── System ───────────────────────────────────────────────────────────────
+    // ── External Metadata ────────────────────────────────────────────────────
+    @Column(columnDefinition = "TEXT")
+    private String officialWebsite;
+
+    @Column(columnDefinition = "TEXT")
+    private String helpline;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate closeDate;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void beforePersist() {
+    public void beforePersPersist() {
         if (id == null) id = java.util.UUID.randomUUID().toString();
         if (createdAt == null) createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();

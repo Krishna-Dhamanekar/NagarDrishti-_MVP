@@ -107,15 +107,15 @@
 
 <!-- SCHEME DETAIL MODAL -->
 <div class="modal-overlay" id="schemeModal">
-  <div class="modal">
+  <div class="modal" style="max-width:680px; width:90%">
     <div class="modal-header">
-      <div style="min-width:0">
-        <div class="modal-title"  id="modalTitle"></div>
-        <div class="card-sub"     id="modalShortName"></div>
+      <div style="min-width:0; padding-right:12px">
+        <div class="modal-title" id="modalTitle" style="word-break:break-word; font-size:1.25rem; line-height:1.4"></div>
+        <div class="card-sub" id="modalShortName" style="margin-top:4px; font-weight:600; color:var(--gray-500)"></div>
       </div>
-      <button class="modal-close" id="modalClose">×</button>
+      <button class="modal-close" id="modalClose" style="font-size:2rem; cursor:pointer">&times;</button>
     </div>
-    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-body" id="modalBody" style="padding-top:10px"></div>
   </div>
 </div>
 

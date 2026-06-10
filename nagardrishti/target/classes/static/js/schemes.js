@@ -264,7 +264,7 @@ function renderEligible() {
 
     container.innerHTML =
         '<div style="font-size:.85rem;color:var(--gray-500);margin-bottom:14px;padding:10px 14px;' +
-        'background:var(--sky-bg);border-radius:8px;border-left:3px solid var(--sky)">' +
+        'background:var(--sky-bg);border-radius:8px;border-left:3px solid var(--sky streaming)">' +
         '<strong>' + filteredList.length + '</strong> schemes matched to your profile — sorted by best match first. ' +
         'Universal schemes are in <a href="#" onclick="document.querySelector(\'[data-tab=browse]\').click();return false" ' +
         'style="color:var(--royal);font-weight:600">Browse All →</a></div>' +
@@ -387,6 +387,8 @@ function schemeCard(s) {
           s.beneficiaryState.slice(0, 3).map(esc).join(", ") +
           (s.beneficiaryState.length > 3 ? " +more" : "") + '</div>'
         : "";
+
+    // Fallback logic for small card summary view
     var benefit = cleanBenefit(s.benefitAmount) || cleanBenefit(s.benefitType) || "See details";
     var desc    = (s.description || "").substring(0, 150);
 
@@ -425,7 +427,7 @@ function attachCardListeners(schemes) {
 }
 
 // ============================================================
-// MODAL
+// MODAL — FIXED TRANSLATION & LAYOUT
 // ============================================================
 var modal       = document.getElementById("schemeModal");
 var schemeCache = {};
@@ -454,49 +456,70 @@ async function openModal(id, sourceList) {
     }).join(" ");
     var tags = (s.tags || []).map(function(t) { return '<span class="tag-pill">' + esc(t) + '</span>'; }).join("");
     var stateInfo = (s.level === "State" && (s.beneficiaryState || []).length)
-        ? '<div class="modal-section"><div class="modal-section-title">Applicable States</div>' +
-          '<p>' + s.beneficiaryState.map(esc).join(", ") + '</p></div>'
+        ? '<div class="modal-section"><div class="modal-section-title">📍 Applicable States / UTs</div>' +
+          '<p style="font-size:0.9rem; color:var(--gray-700)">' + s.beneficiaryState.map(esc).join(", ") + '</p></div>'
         : "";
 
+    // Comprehensive Eligibility List Builder
     var el = [];
-    if (s.minAge || s.maxAge) el.push("Age: " + (s.minAge || "any") + " to " + (s.maxAge || "any"));
-    if (s.gender && s.gender !== "All") el.push("Gender: " + s.gender);
-    if (s.maxIncome) el.push("Max annual income: " + formatINR(s.maxIncome));
-    if (s.requiresBpl) el.push("BPL card required");
-    if (s.requiresDisability) el.push("Disability certificate required");
-    if (s.occupation) el.push("Occupation: " + s.occupation);
-    if (s.maxLandAllowed) el.push("Max land: " + s.maxLandAllowed + " acres");
-    if (s.targetEducationLevel) el.push("Education: " + s.targetEducationLevel);
-    if ((s.eligibleCategories || []).length) el.push("Categories: " + s.eligibleCategories.join(", "));
+    if (s.minAge || s.maxAge) el.push("<strong>Age Bracket:</strong> " + (s.minAge || "18") + " to " + (s.maxAge || "any") + " years");
+    if (s.gender && s.gender !== "All") el.push("<strong>Gender Restriction:</strong> Strictly for " + s.gender);
+    if (s.maxIncome) el.push("<strong>Maximum Income Ceiling:</strong> Up to " + formatINR(s.maxIncome) + " annually");
+    if (s.requiresBpl) el.push("⚠️ <strong>BPL:</strong> Requires Below Poverty Line (BPL) documentation status");
+    if (s.requiresDisability) el.push("⚠️ <strong>Disability:</strong> Valid Disability Certificate required");
+    if (s.occupation) el.push("<strong>Target Occupation:</strong> Dedicated to " + s.occupation + " groups");
+    if (s.maxLandAllowed) el.push("<strong>Land holding limit:</strong> Maximum " + s.maxLandAllowed + " acres allowed");
+    if (s.targetEducationLevel) el.push("<strong>Target Qualification:</strong> " + s.targetEducationLevel);
+    if ((s.eligibleCategories || []).length) el.push("<strong>Caste/Community Group:</strong> " + s.eligibleCategories.join(", "));
 
     var elHtml = el.length
-        ? '<ul style="margin:0;padding-left:18px">' +
-          el.map(function(l) { return '<li style="font-size:.87rem;margin-bottom:4px">' + esc(l) + '</li>'; }).join("") + '</ul>'
-        : '<p style="color:var(--gray-500);font-size:.87rem">Open to all eligible citizens.</p>';
+        ? '<ul style="margin:8px 0 0;padding-left:20px">' +
+          el.map(function(l) { return '<li style="font-size:.88rem;margin-bottom:6px;color:var(--gray-700)">' + l + '</li>'; }).join("") + '</ul>'
+        : '<p style="color:var(--gray-500);font-size:.87rem">Open to all eligible normal citizens without special criteria restrictions.</p>';
 
-    var benefitAmount = cleanBenefit(s.benefitAmount) || "See description below";
+    // FIX: Do NOT use cleanBenefit inside the modal. Use the full string value.
+    var displayBenefitAmount = s.benefitAmount ? s.benefitAmount.trim().replace(/[,\s]+$/, "") : "Review disbursal notes below";
 
     document.getElementById("modalBody").innerHTML =
-        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px">' + cats +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">' + cats +
             (s.level ? '<span class="badge ' + (LEVEL_BADGE[s.level] || "badge-gray") + '">' + esc(s.level) + '</span>' : "") +
             (s.schemeFor ? '<span class="badge badge-gray">' + esc(s.schemeFor) + '</span>' : "") +
         '</div>' +
-        '<div class="modal-section"><div class="modal-section-title">About</div>' +
-            '<p style="font-size:.9rem;line-height:1.65">' + esc(s.description || "") + '</p></div>' +
-        '<div class="card-benefit" style="margin-bottom:16px">' +
-            '<div class="card-benefit-label">Benefit</div>' +
-            '<div class="card-benefit-amount">' + esc(benefitAmount) + '</div>' +
-            (s.benefitType ? '<div class="card-benefit-desc" style="white-space:pre-line;margin-top:6px;max-height:160px;overflow-y:auto">' + esc(s.benefitType) + '</div>' : "") +
+
+        '<div class="modal-section"><div class="modal-section-title">📝 About The Scheme</div>' +
+            '<p style="font-size:.92rem;line-height:1.65;color:var(--gray-700)">' + esc(s.description || "No overview statement found.") + '</p></div>' +
+
+        '<div class="card-benefit" style="margin-bottom:16px; background: #f0f7ff; border: 1px solid #cce3ff; padding:14px; border-radius:8px">' +
+            '<div class="card-benefit-label" style="font-size:.78rem; text-transform: uppercase; color:#555">Primary Financial Grant Amount</div>' +
+            '<div class="card-benefit-amount" style="font-size:1.4rem; font-weight:700; color:var(--royal); margin-top:4px">' + esc(displayBenefitAmount) + '</div>' +
         '</div>' +
-        '<div class="modal-section"><div class="modal-section-title">Eligibility Criteria</div>' + elHtml + '</div>' +
+
+        // FIX: Removed max-height & overflow constraints to show everything, and added breathing room
+        (s.benefitType ?
+        '<div class="modal-section">' +
+            '<div class="modal-section-title">💰 Detailed Benefits & Disbursal Process</div>' +
+            '<div style="white-space:pre-line;font-size:.9rem;line-height:1.6;color:var(--gray-800);background:#f8f9fa;padding:16px;border-radius:8px;border-left:4px solid #28a745;margin-top:6px">' + esc(s.benefitType) + '</div>' +
+        '</div>' : "") +
+
+        '<div class="modal-section"><div class="modal-section-title">📋 Comprehensive Eligibility Conditions</div>' + elHtml + '</div>' +
         stateInfo +
-        (tags ? '<div class="modal-section"><div class="modal-section-title">Tags</div><div style="margin-top:4px">' + tags + '</div></div>' : "") +
-        '<div class="modal-section"><div class="modal-section-title">Official Website</div>' +
-            '<p>' + (s.officialWebsite ? '<a href="' + esc(s.officialWebsite) + '" target="_blank" rel="noopener">' + esc(s.officialWebsite) + '</a>' : "—") + '</p></div>' +
-        '<div class="modal-section"><div class="modal-section-title">Helpline</div>' +
-            '<p>' + (s.helpline ? '<a href="tel:' + esc(s.helpline) + '">' + esc(s.helpline) + '</a>' : "—") + '</p></div>' +
-        '<hr style="border:none;border-top:1px solid var(--gray-100);margin:16px 0">' +
-        '<div class="modal-section-title">Citizen Feedback</div>' +
+
+        (tags ? '<div class="modal-section"><div class="modal-section-title">Tags</div><div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px">' + tags + '</div></div>' : "") +
+
+        // Added two distinct, easily clickable contact channels
+        '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:20px">' +
+            '<div>' +
+                '<div class="modal-section-title">🌐 External Application Link</div>' +
+                '<p style="margin-top:4px">' + (s.officialWebsite ? '<a href="' + esc(s.officialWebsite) + '" target="_blank" rel="noopener" style="color:var(--royal);font-weight:600;text-decoration:underline;word-break:break-all">' + esc(s.officialWebsite) + '</a>' : "No digital portal link listed.") + '</p>' +
+            '</div>' +
+            '<div>' +
+                '<div class="modal-section-title">📞 Direct Help Desk Support</div>' +
+                '<p style="margin-top:4px">' + (s.helpline ? '<a href="tel:' + esc(s.helpline) + '" style="color:var(--royal);font-weight:600;text-decoration:underline">' + esc(s.helpline) + '</a>' : "—") + '</p>' +
+            '</div>' +
+        '</div>' +
+
+        '<hr style="border:none;border-top:1px solid var(--gray-100);margin:20px 0">' +
+        '<div class="modal-section-title">Citizen Verification Feed</div>' +
         '<div id="modalFeedbackList"><div class="loading"><div class="spinner"></div></div></div>';
 
     modal.classList.add("show");

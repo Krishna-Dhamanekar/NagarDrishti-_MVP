@@ -1,73 +1,55 @@
 package com.nagardrishti.controller;
 
+import com.nagardrishti.dto.EligibleSchemesResponse;
 import com.nagardrishti.entity.Scheme;
 import com.nagardrishti.repository.SchemeRepository;
 import com.nagardrishti.service.SchemeService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
-@RestController @RequestMapping("/api/schemes")
-@CrossOrigin(origins = "*") @RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/schemes")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class SchemeController {
 
-    private final SchemeService    schemeService;
-    private final SchemeRepository schemeRepo;
+    private final SchemeService schemeService;
+    private final SchemeRepository schemeRepository;
 
-    @GetMapping
-    public ResponseEntity<?> all() {
-        return ResponseEntity.ok(schemeService.getAllSchemes());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> one(@PathVariable String id) {
-        try {
-            return ResponseEntity.ok(schemeService.getSchemeById(id));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        }
-    }
-
+    // ── 1. Fetch Eligible Schemes for a User ────────────────────────────────
     @GetMapping("/eligible/{userId}")
-    public ResponseEntity<?> eligible(@PathVariable String userId) {
-        try {
-            return ResponseEntity.ok(schemeService.getEligibleSchemes(userId));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<EligibleSchemesResponse> getEligibleSchemes(@PathVariable String userId) {
+        EligibleSchemesResponse response = schemeService.getEligibleSchemes(userId);
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/category/{category}")
-    public ResponseEntity<?> byCategory(@PathVariable String category) {
-        return ResponseEntity.ok(schemeService.getSchemesByCategory(category));
-    }
-
+    // ── 2. Search All Active Schemes ────────────────────────────────────────
     @GetMapping("/search")
-    public ResponseEntity<?> search(@RequestParam(required = false, defaultValue = "") String q) {
-        return ResponseEntity.ok(schemeService.search(q));
+    public ResponseEntity<List<Scheme>> searchSchemes(@RequestParam(name = "q", required = false) String q) {
+        List<Scheme> schemes = schemeService.search(q);
+        return ResponseEntity.ok(schemes);
     }
 
-    /**
-     * POST /api/schemes/bulk
-     * Always stamps createdAt = NOW on each scheme so notification
-     * system correctly identifies schemes added after a user's last login.
-     */
+    // ── 3. Get Details of a Single Scheme ───────────────────────────────────
+    // FIXED: Handled the null condition explicitly to fix both compile errors and IDE warnings
+    @GetMapping("/{id}")
+    public ResponseEntity<Scheme> getSchemeDetails(@PathVariable String id) {
+        Scheme scheme = schemeService.getSchemeById(id);
+
+        if (scheme == null) {
+            return ResponseEntity.notFound().build(); // Returns a clean HTTP 404 instead of a blank 200 OK
+        }
+
+        return ResponseEntity.ok(scheme);
+    }
+
+    // ── 4. Bulk Upload Endpoint (For Database Seeding) ──────────────────────
     @PostMapping("/bulk")
-    public ResponseEntity<?> bulkImport(@RequestBody List<Scheme> schemes) {
-        if (schemes == null || schemes.isEmpty())
-            return ResponseEntity.badRequest().body(Map.of("error", "Empty scheme list"));
-
-        LocalDateTime now = LocalDateTime.now();
-        schemes.forEach(s -> {
-            if (s.getActive()    == null) s.setActive(true);
-            if (s.getCreatedAt() == null) s.setCreatedAt(now); // critical for notifications
-        });
-
-        List<Scheme> saved = schemeRepo.saveAll(schemes);
-        return ResponseEntity.ok(Map.of("imported", saved.size()));
+    public ResponseEntity<List<Scheme>> createSchemesInBulk(@RequestBody List<Scheme> schemes) {
+        List<Scheme> savedSchemes = schemeRepository.saveAll(schemes);
+        return ResponseEntity.ok(savedSchemes);
     }
 }

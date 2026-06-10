@@ -12,13 +12,13 @@ import java.util.List;
 @Repository
 public interface SchemeRepository extends JpaRepository<Scheme, String> {
 
-    // Safely fetches all active schemes
     List<Scheme> findByActiveTrue();
 
-    // Required by the newEligibleSchemesSince method in SchemeService
     List<Scheme> findByActiveTrueAndCreatedAtAfter(LocalDateTime since);
 
-    // FIXED: Removed s.shortTitle and s.schemeFor references
-    @Query("SELECT s FROM Scheme s WHERE s.active = true AND (LOWER(s.name) LIKE CONCAT('%', :q, '%') OR LOWER(s.description) LIKE CONCAT('%', :q, '%'))")
+    @Query("SELECT s FROM Scheme s WHERE s.active = true AND (" +
+            "LOWER(s.name) LIKE CONCAT('%', :q, '%') OR " +
+            "LOWER(s.shortTitle) LIKE CONCAT('%', :q, '%') OR " +
+            "LOWER(s.description) LIKE CONCAT('%', :q, '%'))")
     List<Scheme> searchActive(@Param("q") String q);
 }
