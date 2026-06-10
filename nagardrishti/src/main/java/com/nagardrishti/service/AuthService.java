@@ -3,6 +3,7 @@ package com.nagardrishti.service;
 import com.nagardrishti.dto.*;
 import com.nagardrishti.entity.Project;
 import com.nagardrishti.entity.Scheme;
+import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

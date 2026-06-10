@@ -1,6 +1,7 @@
 package com.nagardrishti.controller;
 
 import com.nagardrishti.entity.Project;
+import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.ProjectRepository;
 import com.nagardrishti.service.AuthService;
 import com.nagardrishti.service.ProjectService;

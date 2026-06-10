@@ -19,13 +19,13 @@ public class Scheme {
 
     // ── Core Details ─────────────────────────────────────────────────────────
     @Column(nullable = false, length = 255)
-    private String title;
+    private String name; // Changed from title to name to fix your compilation errors!
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(length = 100)
-    private String benefitAmount; // Stored as String (e.g. "1.5 Lakh", "500/month")
+    private String benefitAmount;
 
     @Builder.Default
     @Column(nullable = false)
@@ -36,32 +36,32 @@ public class Scheme {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "scheme_categories", joinColumns = @JoinColumn(name = "scheme_id"))
     @Column(name = "category")
-    private List<String> schemeCategory; // e.g., ["Education", "Pension"]
+    private List<String> schemeCategory;
 
     // ── Location Details ─────────────────────────────────────────────────────
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "scheme_states", joinColumns = @JoinColumn(name = "scheme_id"))
     @Column(name = "state")
-    private List<String> beneficiaryState; // e.g., ["Karnataka", "Central", "All"]
+    private List<String> beneficiaryState;
 
     @Column(length = 100)
-    private String beneficiaryDistrict; // For hyper-local scheme matching
+    private String beneficiaryDistrict;
 
     // ── Demographic Limits (Hard Limits) ─────────────────────────────────────
     private Integer minAge;
     private Integer maxAge;
 
     @Column(length = 10)
-    private String gender; // "Male", "Female", "Other", "All"
+    private String gender;
 
-    private Double maxIncome; // Annual income ceiling
+    private Double maxIncome;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "scheme_eligible_castes", joinColumns = @JoinColumn(name = "scheme_id"))
     @Column(name = "caste_category")
-    private List<String> eligibleCategories; // e.g., ["SC", "ST", "OBC", "General", "All"]
+    private List<String> eligibleCategories;
 
-    private Double maxLandAllowed; // In Acres
+    private Double maxLandAllowed;
 
     // ── Socio-Economic Matchers ──────────────────────────────────────────────
     @Column(length = 30)
@@ -73,7 +73,7 @@ public class Scheme {
     @Column(length = 20)
     private String maritalStatus;
 
-    // ── Vulnerability & Special Targets (The "Score Boosters") ───────────────
+    // ── Vulnerability & Special Targets ──────────────────────────────────────
     @Builder.Default private Boolean requiresBpl = false;
     @Builder.Default private Boolean requiresDisability = false;
 
@@ -81,7 +81,7 @@ public class Scheme {
     @Builder.Default private Boolean targetsGirlChild = false;
     @Builder.Default private Boolean targetsSeniorCitizens = false;
 
-    // ── Document Requirements (Hard Limits) ──────────────────────────────────
+    // ── Document Requirements ────────────────────────────────────────────────
     @Builder.Default private Boolean requiresRationCard = false;
     @Builder.Default private Boolean requiresBankAccount = false;
     @Builder.Default private Boolean requiresAadhaarLinkedBank = false;
@@ -96,7 +96,6 @@ public class Scheme {
         if (createdAt == null) createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
 
-        // Ensure booleans are never null to prevent NullPointerExceptions
         if (active == null) active = true;
         if (requiresBpl == null) requiresBpl = false;
         if (requiresDisability == null) requiresDisability = false;
