@@ -2,7 +2,6 @@ package com.nagardrishti.service;
 
 import com.nagardrishti.dto.*;
 import com.nagardrishti.entity.Feedback;
-import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.FeedbackRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

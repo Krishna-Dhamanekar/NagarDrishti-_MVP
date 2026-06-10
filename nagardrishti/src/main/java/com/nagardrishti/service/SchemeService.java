@@ -2,23 +2,23 @@ package com.nagardrishti.service;
 
 import com.nagardrishti.dto.EligibleSchemesResponse;
 import com.nagardrishti.entity.Scheme;
-import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.SchemeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Slf4j @Service @RequiredArgsConstructor
+@Slf4j
+@Service
+@RequiredArgsConstructor
 public class SchemeService {
 
     private final SchemeRepository schemeRepo;
     private final AuthService      authService;
 
-    // ── Browse ────────────────────────────────────────────────────────────────
+    // ── Browse & Search ──────────────────────────────────────────────────────
 
     public List<Scheme> getAllSchemes() {
         return schemeRepo.findByActiveTrue();
@@ -31,286 +31,163 @@ public class SchemeService {
 
     public List<Scheme> getSchemesByCategory(String category) {
         return schemeRepo.findByActiveTrue().stream()
-                .filter(s -> s.getSchemeCategory() != null &&
-                        s.getSchemeCategory().stream().anyMatch(c -> c.equalsIgnoreCase(category)))
+                .filter(s -> s.getSchemeCategory() != null && s.getSchemeCategory().stream().anyMatch(c -> c.equalsIgnoreCase(category)))
                 .sorted(byPriority())
                 .collect(Collectors.toList());
     }
 
-    // ── Multi-word search ─────────────────────────────────────────────────────
-
-    public List<Scheme> search(String query) {
-        if (query == null || query.trim().length() < 3) return List.of();
-
-        String   fullQ = query.trim().toLowerCase();
-        String[] words = fullQ.split("\\s+");
-
-        LinkedHashMap<String, Scheme> resultMap = new LinkedHashMap<>();
-        for (String word : words) {
-            if (word.length() >= 2) {
-                schemeRepo.searchActive(word).forEach(s -> resultMap.putIfAbsent(s.getId(), s));
-            }
-        }
-
-        schemeRepo.findByActiveTrue().stream()
-                .filter(s -> !resultMap.containsKey(s.getId()))
-                .filter(s -> anyWordMatches(words, s))
-                .forEach(s -> resultMap.putIfAbsent(s.getId(), s));
-
-        return resultMap.values().stream()
-                .sorted(Comparator
-                        .comparingInt((Scheme s) -> countWordMatches(words, s)).reversed()
-                        .thenComparingInt(s -> s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE))
-                .limit(60)
-                .collect(Collectors.toList());
+    public List<Scheme> search(String q) {
+        if (q == null || q.trim().isEmpty()) return schemeRepo.findByActiveTrue();
+        return schemeRepo.searchActive(q.toLowerCase().trim());
     }
 
-    private boolean anyWordMatches(String[] words, Scheme s) {
-        for (String w : words) {
-            if (listContains(s.getTags(), w)) return true;
-            if (listContains(s.getSchemeCategory(), w)) return true;
-            if (listContains(s.getBeneficiaryState(), w)) return true;
-            if (s.getSchemeFor() != null && s.getSchemeFor().toLowerCase().contains(w)) return true;
-        }
-        return false;
-    }
-
-    private int countWordMatches(String[] words, Scheme s) {
-        int count = 0;
-        String hay = ((s.getName()        == null ? "" : s.getName()) + " " +
-                (s.getShortTitle()  == null ? "" : s.getShortTitle()) + " " +
-                (s.getDescription() == null ? "" : s.getDescription())).toLowerCase();
-        for (String w : words) {
-            if (hay.contains(w) || listContains(s.getTags(), w) ||
-                    listContains(s.getSchemeCategory(), w)) count++;
-        }
-        return count;
-    }
-
-    private boolean listContains(List<String> list, String word) {
-        return list != null && list.stream().anyMatch(v -> v.toLowerCase().contains(word));
-    }
-
-    // ── Eligibility ───────────────────────────────────────────────────────────
+    // ── THE ENGINE ───────────────────────────────────────────────────────────
 
     public EligibleSchemesResponse getEligibleSchemes(String userId) {
         User user = authService.getUserById(userId);
 
-        log.info("Eligibility check — user={} state={} category={} gender={} income={} occupation={}",
-                user.getFullName(), user.getState(), user.getCategory(),
-                user.getGender(), user.getAnnualIncome(), user.getOccupation());
+        // Debugging with EXACT entity field names
+        log.info("🔍 DEBUG: Fetched User -> State: {}, District: {}, Income: {}, Widow: {}, Girls: {}",
+                user.getState(), user.getDistrict(), user.getAnnualIncome(), user.getWidow(), user.getGirlChildrenCount());
 
-        List<Scheme> eligible = schemeRepo.findByActiveTrue().stream()
-                .filter(s -> matchAge(s, user))
-                .filter(s -> matchGender(s, user))
-                .filter(s -> matchIncome(s, user))
-                .filter(s -> matchBpl(s, user))
-                .filter(s -> matchDisability(s, user))
-                .filter(s -> matchCategory(s, user))
-                .filter(s -> matchOccupation(s, user))
-                .filter(s -> matchLand(s, user))
-                .filter(s -> matchEducation(s, user))
-                .filter(s -> matchState(s, user))
-                .filter(s -> positiveMatchScore(s, user) >= 1)
-                .sorted(Comparator
-                        .comparingInt((Scheme s) -> positiveMatchScore(s, user)).reversed()
-                        .thenComparingInt(s -> s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE))
+        List<Scheme> allSchemes = schemeRepo.findByActiveTrue();
+
+        List<Scheme> topMatches = allSchemes.stream()
+                // 1. HARD LIMITS (Must pass these rules to even be considered)
+                .filter(s -> passesHardLimits(s, user))
+                // 2. SCORING (Must have a positive relevance score)
+                .filter(s -> calculateRelevanceScore(s, user) > 0)
+                // 3. SORTING (Highest score first, tie-break by benefit amount)
+                .sorted((s1, s2) -> {
+                    int score1 = calculateRelevanceScore(s1, user);
+                    int score2 = calculateRelevanceScore(s2, user);
+                    if (score1 != score2) return Integer.compare(score2, score1);
+                    return Double.compare(parseBenefitAmount(s2.getBenefitAmount()), parseBenefitAmount(s1.getBenefitAmount()));
+                })
+                .limit(40) // Cap the results to top 40 highly personalized schemes
                 .collect(Collectors.toList());
 
-        double totalBenefit = eligible.stream()
-                .mapToDouble(s -> parseBenefitAmount(s.getBenefitAmount()))
-                .sum();
-
-        log.info("Eligible schemes for user {} ({}): {} | totalBenefit={}",
-                user.getFullName(), userId, eligible.size(), totalBenefit);
+        double totalBenefit = topMatches.stream().mapToDouble(s -> parseBenefitAmount(s.getBenefitAmount())).sum();
 
         return EligibleSchemesResponse.builder()
-                .totalEligibleSchemes(eligible.size())
+                .totalEligibleSchemes(topMatches.size())
                 .totalPotentialBenefit(totalBenefit)
-                .schemes(eligible)
+                .schemes(topMatches)
                 .build();
     }
 
-    // ── New scheme notifications ──────────────────────────────────────────────
+    // ── SCORING ALGORITHM ────────────────────────────────────────────────────
 
-    public List<Scheme> newEligibleSchemesSince(User user, LocalDateTime since) {
-        if (since == null) return List.of();
-        return schemeRepo.findByActiveTrueAndCreatedAtAfter(since).stream()
-                .filter(s -> matchAge(s, user))
-                .filter(s -> matchGender(s, user))
-                .filter(s -> matchIncome(s, user))
-                .filter(s -> matchBpl(s, user))
-                .filter(s -> matchDisability(s, user))
-                .filter(s -> matchCategory(s, user))
-                .filter(s -> matchOccupation(s, user))
-                .filter(s -> matchLand(s, user))
-                .filter(s -> matchEducation(s, user))
-                .filter(s -> matchState(s, user))
-                .filter(s -> positiveMatchScore(s, user) >= 1)
-                .sorted(byPriority())
-                .limit(20)
-                .collect(Collectors.toList());
-    }
-
-    // ── Positive match score ──────────────────────────────────────────────────
-
-    private int positiveMatchScore(Scheme s, User u) {
+    private int calculateRelevanceScore(Scheme s, User u) {
         int score = 0;
 
-        // State-level scheme matching user's state (+2)
-        if ("State".equalsIgnoreCase(s.getLevel())
-                && u.getState() != null
-                && s.getBeneficiaryState() != null
-                && s.getBeneficiaryState().stream().anyMatch(st -> st.equalsIgnoreCase(u.getState())))
-            score += 2;
+        // 1. LOCATION SCORING (State & District)
+        if (s.getBeneficiaryState() != null && !s.getBeneficiaryState().isEmpty()) {
+            boolean isExactState = s.getBeneficiaryState().stream().anyMatch(st -> st.equalsIgnoreCase(u.getState()));
+            boolean isCentral = s.getBeneficiaryState().stream().anyMatch(st ->
+                    st.equalsIgnoreCase("All") || st.equalsIgnoreCase("Central") || st.equalsIgnoreCase("Pan India") || st.equalsIgnoreCase("India"));
 
-        // Category-specific scheme matching user (+2)
-        if (s.getEligibleCategories() != null && !s.getEligibleCategories().isEmpty()
-                && u.getCategory() != null
-                && s.getEligibleCategories().stream().anyMatch(c -> c.equalsIgnoreCase(u.getCategory())))
-            score += 2;
+            if (isExactState) {
+                score += 100;
+                // Hyper-local District Bonus
+                if (s.getBeneficiaryDistrict() != null && u.getDistrict() != null && s.getBeneficiaryDistrict().equalsIgnoreCase(u.getDistrict())) {
+                    score += 50;
+                }
+            } else if (isCentral) {
+                score += 10;
+            } else {
+                score -= 1000; // Wrong state entirely
+            }
+        } else {
+            score += 10; // Assume Central if state array is null
+        }
 
-        // Gender-specific scheme (+1)
-        if (s.getGender() != null && !"All".equalsIgnoreCase(s.getGender())
-                && u.getGender() != null && s.getGender().equalsIgnoreCase(u.getGender()))
-            score += 1;
+        // 2. EXTREME VULNERABILITY BONUSES (Using your exact User boolean flags)
+        if (Boolean.TRUE.equals(s.getTargetsWidows()) && Boolean.TRUE.equals(u.getWidow())) score += 150;
+        if (Boolean.TRUE.equals(s.getTargetsGirlChild()) && u.getGirlChildrenCount() != null && u.getGirlChildrenCount() > 0) score += 120;
+        if (Boolean.TRUE.equals(s.getTargetsSeniorCitizens()) && Boolean.TRUE.equals(u.getSeniorCitizenInFamily())) score += 80;
 
-        // Income ceiling and user qualifies (+1)
-        if (s.getMaxIncome() != null && u.getAnnualIncome() != null
-                && u.getAnnualIncome() <= s.getMaxIncome())
-            score += 1;
+        // 3. STANDARD DEMOGRAPHICS
+        if (Boolean.TRUE.equals(s.getRequiresDisability()) && Boolean.TRUE.equals(u.getDisabled())) score += 80;
+        if (Boolean.TRUE.equals(s.getRequiresBpl()) && Boolean.TRUE.equals(u.getBpl())) score += 60;
 
-        // BPL required AND user is BPL (+2)
-        if (Boolean.TRUE.equals(s.getRequiresBpl()) && Boolean.TRUE.equals(u.getBpl()))
-            score += 2;
+        if (s.getEligibleCategories() != null && u.getCategory() != null && s.getEligibleCategories().contains(u.getCategory())) score += 50;
 
-        // Disability required AND user is disabled (+2)
-        if (Boolean.TRUE.equals(s.getRequiresDisability()) && Boolean.TRUE.equals(u.getDisabled()))
-            score += 2;
+        if (s.getGender() != null && !s.getGender().equalsIgnoreCase("All") && !s.getGender().equalsIgnoreCase("Any")) {
+            if (u.getGender() != null && s.getGender().equalsIgnoreCase(u.getGender())) score += 40;
+        }
 
-        // Occupation-specific match (+2)
-        if (s.getOccupation() != null && !s.getOccupation().isBlank()
-                && u.getOccupation() != null
-                && s.getOccupation().equalsIgnoreCase(u.getOccupation()))
-            score += 2;
+        if (s.getMinAge() != null || s.getMaxAge() != null) score += 20;
 
-        // Age range specified and user is in it (+1)
-        if ((s.getMinAge() != null || s.getMaxAge() != null) && u.getAge() != null)
-            score += 1;
-
-        // Education level matches (+1)
-        if (s.getTargetEducationLevel() != null && !s.getTargetEducationLevel().isBlank()
-                && s.getTargetEducationLevel().equalsIgnoreCase(u.getEducationLevel()))
-            score += 1;
-
-        // Widow-tagged scheme for widow user (+2)
-        if (Boolean.TRUE.equals(u.getWidow())
-                && s.getTags() != null
-                && s.getTags().stream().anyMatch(t -> t.toLowerCase().contains("widow")))
-            score += 2;
+        // 4. MARITAL STATUS, OCCUPATION & EDUCATION
+        if (s.getMaritalStatus() != null && u.getMaritalStatus() != null && s.getMaritalStatus().equalsIgnoreCase(u.getMaritalStatus())) score += 50;
+        if (s.getOccupation() != null && u.getOccupation() != null && s.getOccupation().equalsIgnoreCase(u.getOccupation())) score += 60;
+        if (s.getTargetEducationLevel() != null && u.getEducationLevel() != null && s.getTargetEducationLevel().equalsIgnoreCase(u.getEducationLevel())) score += 50;
 
         return score;
     }
 
-    // ── Hard match predicates ─────────────────────────────────────────────────
+    // ── HARD LIMITS (Non-Negotiable Rules) ───────────────────────────────────
 
-    private boolean matchAge(Scheme s, User u) {
-        if (u.getAge() == null) return true;
-        if (s.getMinAge() != null && u.getAge() < s.getMinAge()) return false;
-        if (s.getMaxAge() != null && u.getAge() > s.getMaxAge()) return false;
-        return true;
-    }
-
-    private boolean matchGender(Scheme s, User u) {
-        if (s.getGender() == null || "All".equalsIgnoreCase(s.getGender())) return true;
-        return u.getGender() != null && s.getGender().equalsIgnoreCase(u.getGender());
-    }
-
-    private boolean matchIncome(Scheme s, User u) {
-        if (s.getMaxIncome() == null) return true;
-        if (u.getAnnualIncome() == null) return true; // unknown income = give benefit of doubt
-        return u.getAnnualIncome() <= s.getMaxIncome();
-    }
-
-    private boolean matchBpl(Scheme s, User u) {
-        if (!Boolean.TRUE.equals(s.getRequiresBpl())) return true;
-        return Boolean.TRUE.equals(u.getBpl());
-    }
-
-    private boolean matchDisability(Scheme s, User u) {
-        if (!Boolean.TRUE.equals(s.getRequiresDisability())) return true;
-        return Boolean.TRUE.equals(u.getDisabled());
-    }
-
-    private boolean matchCategory(Scheme s, User u) {
-        if (s.getEligibleCategories() == null || s.getEligibleCategories().isEmpty()) return true;
-        if (u.getCategory() == null) return true; // unknown category = give benefit of doubt
-        return s.getEligibleCategories().stream().anyMatch(c -> c.equalsIgnoreCase(u.getCategory()));
-    }
-
-    private boolean matchOccupation(Scheme s, User u) {
-        if (s.getOccupation() == null || s.getOccupation().isBlank()) return true;
-        return u.getOccupation() != null && s.getOccupation().equalsIgnoreCase(u.getOccupation());
-    }
-
-    private boolean matchLand(Scheme s, User u) {
-        if (s.getMaxLandAllowed() == null) return true;
-        if (u.getLandInAcres() == null) return true; // unknown land = give benefit of doubt
-        return u.getLandInAcres() <= s.getMaxLandAllowed();
-    }
-
-    private boolean matchEducation(Scheme s, User u) {
-        if (s.getTargetEducationLevel() == null || s.getTargetEducationLevel().isBlank()) return true;
-        return s.getTargetEducationLevel().equalsIgnoreCase(u.getEducationLevel());
-    }
-
-    private boolean matchState(Scheme s, User u) {
-        if (s.getLevel() == null || s.getLevel().isBlank()) return true;
-        if ("Central".equalsIgnoreCase(s.getLevel())) return true;
-        if ("State".equalsIgnoreCase(s.getLevel())) {
-            if (u.getState() == null) return true; // unknown state = give benefit of doubt
-            if (s.getBeneficiaryState() == null || s.getBeneficiaryState().isEmpty()) return true;
-            return s.getBeneficiaryState().stream().anyMatch(st -> st.equalsIgnoreCase(u.getState()));
+    private boolean passesHardLimits(Scheme s, User u) {
+        // Age Limits
+        if (s.getMinAge() != null || s.getMaxAge() != null) {
+            if (u.getAge() == null) return false;
+            if (s.getMinAge() != null && u.getAge() < s.getMinAge()) return false;
+            if (s.getMaxAge() != null && u.getAge() > s.getMaxAge()) return false;
         }
-        return true; // any other level = pass through
+
+        // Gender Lock
+        if (s.getGender() != null && !s.getGender().equalsIgnoreCase("All") && !s.getGender().equalsIgnoreCase("Any")) {
+            if (u.getGender() == null || !s.getGender().equalsIgnoreCase(u.getGender())) return false;
+        }
+
+        // Income Ceiling
+        if (s.getMaxIncome() != null && s.getMaxIncome() > 0) {
+            if (u.getAnnualIncome() == null || u.getAnnualIncome() > s.getMaxIncome()) return false;
+        }
+
+        // Category/Caste Restrictions
+        if (s.getEligibleCategories() != null && !s.getEligibleCategories().isEmpty()) {
+            if (!s.getEligibleCategories().contains("All") && (u.getCategory() == null || !s.getEligibleCategories().contains(u.getCategory()))) {
+                return false;
+            }
+        }
+
+        // Disability & BPL Restrictions
+        if (Boolean.TRUE.equals(s.getRequiresBpl()) && !Boolean.TRUE.equals(u.getBpl())) return false;
+        if (Boolean.TRUE.equals(s.getRequiresDisability()) && !Boolean.TRUE.equals(u.getDisabled())) return false;
+
+        // Land Ownership Limits
+        if (s.getMaxLandAllowed() != null) {
+            double userLand = (Boolean.TRUE.equals(u.getOwnsLand()) && u.getLandInAcres() != null) ? u.getLandInAcres() : 0.0;
+            if (userLand > s.getMaxLandAllowed()) return false;
+        }
+
+        // DOCUMENT LIMITS (Using exact User entity fields)
+        if (Boolean.TRUE.equals(s.getRequiresRationCard()) && !Boolean.TRUE.equals(u.getRationCard())) return false;
+        if (Boolean.TRUE.equals(s.getRequiresBankAccount()) && !Boolean.TRUE.equals(u.getBankAccount())) return false;
+        if (Boolean.TRUE.equals(s.getRequiresAadhaarLinkedBank()) && !Boolean.TRUE.equals(u.getAadhaarLinked())) return false;
+
+        return true; // Passed all strict gates!
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helper Utilities ─────────────────────────────────────────────────────
 
     private Comparator<Scheme> byPriority() {
-        return Comparator.comparingInt(s ->
-                s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE);
+        return Comparator.comparingInt(s -> s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE);
     }
 
     private double parseBenefitAmount(String raw) {
         if (raw == null || raw.isBlank()) return 0;
-
         String lower = raw.toLowerCase();
-        boolean isLakh  = lower.contains("lakh") || lower.contains(" lac");
-        boolean isCrore = lower.contains("crore") || lower.contains(" cr");
-        boolean isMonthly = lower.contains("/month") || lower.contains("per month") || lower.contains("monthly");
+        double multiplier = 1;
+        if (lower.contains("crore") || lower.contains(" cr")) multiplier = 10000000;
+        else if (lower.contains("lakh") || lower.contains(" lac")) multiplier = 100000;
+        if (lower.contains("/month") || lower.contains("per month") || lower.contains("monthly")) multiplier *= 12;
 
-        // Remove currency symbols and formatting
-        // NOTE: "\u20b9" (single backslash) = actual ₹ character at compile time
-        String cleaned = raw
-                .replace("\u20b9", "")
-                .replaceAll("(?i)rs\\.?\\s*", "")
-                .replaceAll("(?i)inr\\s*", "")
-                .replaceAll(",", "")
-                .trim();
-
-        java.util.regex.Matcher m =
-                java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)").matcher(cleaned);
-        if (!m.find()) return 0;
-
-        double val = Double.parseDouble(m.group(1));
-
-        if      (isCrore) val *= 10_000_000;
-        else if (isLakh)  val *= 100_000;
-
-        // Annualise monthly amounts
-        if (isMonthly) val *= 12;
-
-        return val;
+        String cleaned = raw.replaceAll("[^0-9.]", "");
+        if (cleaned.isBlank() || cleaned.equals(".")) return 0;
+        try { return Double.parseDouble(cleaned) * multiplier; } catch (NumberFormatException e) { return 0; }
     }
 }

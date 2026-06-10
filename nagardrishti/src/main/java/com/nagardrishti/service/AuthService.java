@@ -3,7 +3,6 @@ package com.nagardrishti.service;
 import com.nagardrishti.dto.*;
 import com.nagardrishti.entity.Project;
 import com.nagardrishti.entity.Scheme;
-import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,10 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Slf4j @Service
+@Slf4j
+@Service
 public class AuthService {
 
     private final UserRepository    userRepo;
@@ -36,91 +37,97 @@ public class AuthService {
 
     // ── Register ──────────────────────────────────────────────────────────────
     public AuthResponse register(RegisterRequest req) {
-        if (userRepo.existsByPhoneNumber(req.getPhoneNumber()))
-            throw new IllegalArgumentException("Phone number already registered. Please login instead.");
-        if (req.getEmail() != null && !req.getEmail().isBlank()
-                && userRepo.existsByEmail(req.getEmail()))
-            throw new IllegalArgumentException("Email already registered.");
+        if (userRepo.existsByPhoneNumber(req.getPhoneNumber())) {
+            throw new IllegalArgumentException("Phone number already registered.");
+        }
 
-        User user = User.builder()
-                .fullName(req.getFullName().trim())
+        User u = User.builder()
+                .fullName(req.getFullName())
                 .phoneNumber(req.getPhoneNumber())
-                .email(req.getEmail() != null ? req.getEmail().trim() : null)
+                .email(req.getEmail())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .age(req.getAge())
-                .gender(req.getGender() != null ? req.getGender().toUpperCase() : null)
+                .gender(req.getGender())
                 .state(req.getState())
                 .district(req.getDistrict())
                 .pincode(req.getPincode())
                 .ward(req.getWard())
                 .zone(req.getZone())
-                .category(req.getCategory() != null ? req.getCategory().toUpperCase() : null)
+                .category(req.getCategory())
                 .annualIncome(req.getAnnualIncome())
-                .bpl(Boolean.TRUE.equals(req.getBpl()))
+                .bpl(req.getBpl())
                 .educationLevel(req.getEducationLevel())
                 .occupation(req.getOccupation())
-                .disabled(Boolean.TRUE.equals(req.getDisabled()))
+                .disabled(req.getDisabled())
                 .disabilityPercentage(req.getDisabilityPercentage())
-                .ownsLand(Boolean.TRUE.equals(req.getOwnsLand()))
+                .ownsLand(req.getOwnsLand())
                 .landInAcres(req.getLandInAcres())
-                .maritalStatus(req.getMaritalStatus() != null ? req.getMaritalStatus().toUpperCase() : null)
+                .maritalStatus(req.getMaritalStatus())
                 .familyMembers(req.getFamilyMembers())
-                .widow(Boolean.TRUE.equals(req.getWidow()))
-                .seniorCitizenInFamily(Boolean.TRUE.equals(req.getSeniorCitizenInFamily()))
-                .girlChildrenCount(req.getGirlChildrenCount() != null ? req.getGirlChildrenCount() : 0)
-                .aadhaarLinked(Boolean.TRUE.equals(req.getAadhaarLinked()))
-                .bankAccount(Boolean.TRUE.equals(req.getBankAccount()))
-                .rationCard(Boolean.TRUE.equals(req.getRationCard()))
-                .healthInsurance(Boolean.TRUE.equals(req.getHealthInsurance()))
-                .lastLoginAt(LocalDateTime.now())
+                .widow(req.getWidow())
+                .seniorCitizenInFamily(req.getSeniorCitizenInFamily())
+                .girlChildrenCount(req.getGirlChildrenCount())
+                .aadhaarLinked(req.getAadhaarLinked())
+                .bankAccount(req.getBankAccount())
+                .rationCard(req.getRationCard())
+                .healthInsurance(req.getHealthInsurance())
                 .role("USER")
+                .lastLoginAt(LocalDateTime.now()) // Set initial login time so they don't get flooded with past notifications
                 .build();
 
-        User saved = userRepo.save(user);
-        log.info("New user registered: {} ({})", saved.getFullName(), saved.getId());
-        return toResponse(saved, "Registration successful", List.of(), List.of());
+        u = userRepo.save(u);
+
+        // No new notifications on first ever registration
+        return buildAuthResponse(u, "Registration successful!", new ArrayList<>(), new ArrayList<>());
     }
 
     // ── Login ─────────────────────────────────────────────────────────────────
     public AuthResponse login(LoginRequest req) {
-        User user = userRepo.findByPhoneNumber(req.getPhoneNumber())
-                .orElseThrow(() -> new IllegalArgumentException("No account found with this phone number."));
+        User u = userRepo.findByPhoneNumber(req.getPhoneNumber())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid phone number or password."));
 
-        if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash()))
-            throw new IllegalArgumentException("Incorrect password.");
+        if (!passwordEncoder.matches(req.getPassword(), u.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid phone number or password.");
+        }
 
-        LocalDateTime previousLogin = user.getLastLoginAt();
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepo.save(user);
+        LocalDateTime lastLogin = u.getLastLoginAt();
 
-        // New eligible schemes since last login
-        List<Scheme> newSchemes = schemeService.newEligibleSchemesSince(user, previousLogin);
+        // ── Fetch Delta Notifications ──
+        List<Scheme> newSchemes = new ArrayList<>();
+        List<Project> newProjects = new ArrayList<>();
 
-        // New projects in user's area since last login
-        List<Project> newProjects = projectService.getNewProjectsSince(
-                previousLogin, user.getPincode(), user.getZone());
+        if (lastLogin != null) {
+            // Check for new schemes added since last login that THIS user is eligible for
+            newSchemes = schemeService.newEligibleSchemesSince(u, lastLogin);
 
-        log.info("User logged in: {} — {} new schemes, {} new projects",
-                user.getFullName(), newSchemes.size(), newProjects.size());
+            // Check for new projects added in their area
+            newProjects = projectService.getNewInAreaSince(lastLogin, u.getPincode(), u.getZone());
+        }
 
-        return toResponse(user, "Login successful", newSchemes, newProjects);
+        // Update login timestamp for the next time they log in
+        u.setLastLoginAt(LocalDateTime.now());
+        u = userRepo.save(u);
+
+        return buildAuthResponse(u, "Login successful!", newSchemes, newProjects);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    public User getUserById(String userId) {
-        return userRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+    // ── User Lookup ───────────────────────────────────────────────────────────
+    public User getUserById(String id) {
+        return userRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
     }
 
-    private AuthResponse toResponse(User u, String msg,
-                                    List<Scheme> newSchemes,
-                                    List<Project> newProjects) {
-        List<String> schemeNames = newSchemes.stream().limit(5)
-                .map(s -> s.getShortTitle() != null ? s.getShortTitle() : s.getName())
+    // ── Helper ────────────────────────────────────────────────────────────────
+    private AuthResponse buildAuthResponse(User u, String msg, List<Scheme> newSchemes, List<Project> newProjects) {
+
+        // Truncate names if they are too long for the UI dropdown
+        List<String> schemeNames = newSchemes.stream()
+                .map(s -> s.getName() != null && s.getName().length() > 60
+                        ? s.getName().substring(0, 57) + "..." : s.getName())
                 .collect(Collectors.toList());
 
-        List<String> projectNames = newProjects.stream().limit(5)
-                .map(p -> p.getName().length() > 60
+        List<String> projectNames = newProjects.stream()
+                .map(p -> p.getName() != null && p.getName().length() > 60
                         ? p.getName().substring(0, 57) + "..." : p.getName())
                 .collect(Collectors.toList());
 
@@ -139,8 +146,12 @@ public class AuthService {
                 .girlChildrenCount(u.getGirlChildrenCount())
                 .aadhaarLinked(u.getAadhaarLinked()).bankAccount(u.getBankAccount())
                 .rationCard(u.getRationCard()).healthInsurance(u.getHealthInsurance())
-                .newSchemesCount(newSchemes.size()).newSchemeNames(schemeNames)
-                .newProjectsCount(newProjects.size()).newProjectNames(projectNames)
+
+                // Notifications payloads mapped to AuthResponse DTO
+                .newSchemesCount(newSchemes.size())
+                .newSchemeNames(schemeNames)
+                .newProjectsCount(newProjects.size())
+                .newProjectNames(projectNames)
                 .build();
     }
 }

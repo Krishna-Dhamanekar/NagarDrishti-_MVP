@@ -2,7 +2,6 @@ package com.nagardrishti.service;
 
 import com.nagardrishti.dto.ProjectStats;
 import com.nagardrishti.entity.Project;
-import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,28 +9,54 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
-@Slf4j @Service @RequiredArgsConstructor
+@Slf4j
+@Service
+@RequiredArgsConstructor
 public class ProjectService {
 
     private final ProjectRepository projectRepo;
 
-    public List<Project> getAllProjects() { return projectRepo.findAll(); }
+    public List<Project> getAllProjects() {
+        return projectRepo.findAll();
+    }
 
     public Project getById(String id) {
         return projectRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
     }
 
+    // ── Standard Filters (Fixes "Cannot resolve method" errors) ───────────────
+
+    public List<Project> getByPincode(String pincode) {
+        return projectRepo.findByPincode(pincode);
+    }
+
+    public List<Project> getByDistrict(String district) {
+        return projectRepo.findByDistrictIgnoreCase(district);
+    }
+
+    public List<Project> getByStatus(String status) {
+        return projectRepo.findByStatusIgnoreCase(status);
+    }
+
+    public List<Project> getByCategory(String category) {
+        return projectRepo.findByCategoryIgnoreCase(category);
+    }
+
+    public List<Project> getByDepartment(String deptCode) {
+        return projectRepo.findByDepartmentCodeIgnoreCase(deptCode);
+    }
+
+    public List<Project> getByWard(String ward) {
+        return projectRepo.findByWardIgnoreCase(ward);
+    }
+
+    public List<Project> getByZone(String zone) {
+        return projectRepo.searchByZone(zone.toLowerCase());
+    }
+
     // ── My Area Projects — smart match ────────────────────────────────────────
-    /**
-     * Match logic:
-     *  - If user has pincode AND zone → projects where pincode matches OR
-     *    (project pincode is null AND zone matches)
-     *  - If user has only pincode → projects by pincode
-     *  - If user has only zone → projects by zone
-     */
     public List<Project> getMyAreaProjects(String pincode, String zone) {
         if (pincode != null && !pincode.isBlank() && zone != null && !zone.isBlank()) {
             return projectRepo.findByPincodeOrZoneWhenPincodeNull(pincode, zone);
@@ -40,56 +65,22 @@ public class ProjectService {
         } else if (zone != null && !zone.isBlank()) {
             return projectRepo.findByZoneMatch(zone);
         }
-        return List.of();
+        return new ArrayList<>();
     }
 
-    // ── New project notifications ──────────────────────────────────────────────
-    public List<Project> getNewProjectsSince(LocalDateTime since, String pincode, String zone) {
-        if (since == null) return List.of();
-        if (pincode != null && !pincode.isBlank() && zone != null && !zone.isBlank()) {
-            return projectRepo.findNewInArea(since, pincode, zone);
-        } else if (pincode != null && !pincode.isBlank()) {
-            // fallback: just use zone query with pincode as zone won't match
-            return projectRepo.findByPincode(pincode).stream()
-                    .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(since))
-                    .collect(Collectors.toList());
-        } else if (zone != null && !zone.isBlank()) {
-            return projectRepo.findNewByZone(since, zone);
-        }
-        return List.of();
+    // ── Notifications ─────────────────────────────────────────────────────────
+    public List<Project> getNewInAreaSince(LocalDateTime since, String pincode, String zone) {
+        if (since == null) return new ArrayList<>();
+        return projectRepo.findNewInArea(since, pincode, zone);
     }
 
-    // ── Browse searches ───────────────────────────────────────────────────────
-    public List<Project> getByPincode(String pincode) {
-        return projectRepo.findByPincode(pincode);
-    }
-
-    public List<Project> getByZone(String zone) {
-        List<Project> r = projectRepo.findByZoneIgnoreCase(zone);
-        if (r.isEmpty()) r = projectRepo.searchByZone(zone.toLowerCase());
-        return r;
-    }
-
-    public List<Project> getByDistrict(String d) {
-        return projectRepo.findByDistrictIgnoreCase(d);
-    }
-
-    public List<Project> getByStatus(String s) {
-        return projectRepo.findByStatusIgnoreCase(s);
-    }
-
-    public List<Project> getByCategory(String c) {
-        return projectRepo.findByCategoryIgnoreCase(c);
-    }
-
-    public List<Project> getByDepartment(String dept) {
-        List<Project> r = projectRepo.findByDepartmentCodeIgnoreCase(dept);
-        if (r.isEmpty()) r = projectRepo.findBySanctioningAuthorityIgnoreCase(dept);
-        return r;
-    }
-
-    // ── Stats ─────────────────────────────────────────────────────────────────
+    // ── Analytics / Stats ─────────────────────────────────────────────────────
     public ProjectStats getStats(List<Project> list) {
+        if (list == null || list.isEmpty()) {
+            return ProjectStats.builder().totalProjects(0).totalBudgetAllocated(0.0).totalBudgetSpent(0.0)
+                    .completedProjects(0).inProgressProjects(0).delayedProjects(0).plannedProjects(0).build();
+        }
+
         return ProjectStats.builder()
                 .totalProjects(list.size())
                 .totalBudgetAllocated(sumAllocated(list))
@@ -102,7 +93,7 @@ public class ProjectService {
     }
 
     public ProjectStats getStatsByPincode(String p) {
-        return getStats(projectRepo.findByPincode(p));
+        return getStats(getByPincode(p));
     }
 
     public ProjectStats getStatsByZone(String z) {
@@ -114,9 +105,10 @@ public class ProjectService {
     }
 
     public ProjectStats getStatsByDistrict(String d) {
-        return getStats(projectRepo.findByDistrictIgnoreCase(d));
+        return getStats(getByDistrict(d));
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
     private double sumAllocated(List<Project> list) {
         return list.stream().mapToDouble(p ->
                 p.getBudgetAllocated() != null ? p.getBudgetAllocated() : 0).sum();
@@ -130,6 +122,7 @@ public class ProjectService {
 
     private int count(List<Project> list, String status) {
         return (int) list.stream()
-                .filter(p -> status.equalsIgnoreCase(p.getStatus())).count();
+                .filter(p -> status.equalsIgnoreCase(p.getStatus()))
+                .count();
     }
 }
