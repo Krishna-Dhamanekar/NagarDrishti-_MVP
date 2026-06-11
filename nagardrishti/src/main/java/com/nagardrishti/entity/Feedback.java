@@ -6,35 +6,35 @@ import java.time.LocalDateTime;
 
 /**
  * Citizen feedback — two types:
- *  PROJECT_COMPLAINT  : citizen reports fake/incomplete/delayed project
- *  SCHEME_VERIFICATION: citizen confirms whether they received scheme money
+ * PROJECT_COMPLAINT  : citizen reports fake/incomplete/delayed project
+ * SCHEME_VERIFICATION: citizen confirms whether they received scheme money
  */
 @Entity @Table(name = "feedback")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class Feedback {
 
-    @Id @Column(length = 36) private String id;
+    @Id @Column(length = 255) private String id;
 
     // Who submitted
-    @Column(nullable = false, length = 36)
+    @Column(nullable = false, length = 255)
     private String userId;
 
     @Column(nullable = false, length = 100)
     private String userName;
 
     // What it's about
-    @Column(nullable = false, length = 25)
+    @Column(nullable = false, length = 255)
     private String type;
     // PROJECT_COMPLAINT | SCHEME_VERIFICATION
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 255) // <-- FIXED: Increased length from 20 to 36 to accommodate UUID strings
     private String relatedId;       // projectId or schemeId
 
     @Column(nullable = false, length = 255)
     private String relatedName;     // human-readable name for display
 
     // Project complaint fields
-    @Column(length = 30)
+    @Column(length = 255)
     private String complaintCategory;
     // WORK_NOT_STARTED | POOR_QUALITY | FUNDS_MISUSED |
     // DELAYED | CONTRACTOR_ABSENT | OTHER
@@ -43,7 +43,7 @@ public class Feedback {
     @Column private Boolean schemeReceived;   // did you get the money?
     @Column private Double amountReceived;    // how much you actually received
     @Column private Double amountExpected;    // what was promised
-    @Column(length = 30)
+    @Column(length = 255)
     private String receivedMonth;             // e.g. "March 2025"
 
     // Shared
@@ -54,7 +54,7 @@ public class Feedback {
     private String photoUrl;        // file path or URL of uploaded proof
 
     // Moderation
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 50)
     @Builder.Default
     private String status = "PENDING";
     // PENDING | VERIFIED | REJECTED
