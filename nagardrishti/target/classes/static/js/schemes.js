@@ -194,7 +194,7 @@ document.getElementById("schemeSearch").oninput = function() {
     }
 
     if (hint) hint.style.display = "none";
-    searchTimer = setTimeout(function() { runSearch(q); }, 400); // 400ms debounce ensures fast typing doesn't spam calls
+    searchTimer = setTimeout(function() { runSearch(q); }, 400);
 };
 
 function emptySearchHtml() {
@@ -215,7 +215,6 @@ async function loadEligible() {
 
         allEligible = Array.isArray(r.schemes) ? r.schemes : [];
         document.getElementById("statCount").textContent    = r.totalEligibleSchemes || 0;
-        document.getElementById("statBenefit").textContent  = formatINR(r.totalPotentialBenefit || 0);
         document.getElementById("statLocation").textContent = user.state || "—";
         document.getElementById("statPincode").textContent  = "Pincode: " + (user.pincode || "—");
 
@@ -282,8 +281,11 @@ async function runSearch(q) {
     var container = document.getElementById("browseContainer");
     container.innerHTML = '<div class="loading"><div class="spinner"></div><div>Searching...</div></div>';
     try {
-        var results       = await apiGet("/schemes/search?q=" + encodeURIComponent(q));
-        lastBrowseResults = Array.isArray(results) ? results : [];
+        var res = await apiGet("/schemes/search?q=" + encodeURIComponent(q));
+
+        var results = res && res.content ? res.content : (Array.isArray(res) ? res : []);
+
+        lastBrowseResults = results;
         lastBrowseQuery   = q;
         visibleCount      = PAGE_SIZE;
         renderBrowsePage();
@@ -434,7 +436,9 @@ async function openModal(id, sourceList) {
          || allEligible.find(function(x) { return x.id === id; });
 
     if (!s) {
-        try { s = await apiGet("/schemes/" + id); } catch(e) { return; }
+        try {
+            s = await apiGet("/schemes/" + id);
+        } catch(e) { return; }
     }
     if (!s) return;
     schemeCache[id] = s;

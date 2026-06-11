@@ -6,6 +6,7 @@ import com.nagardrishti.entity.User;
 import com.nagardrishti.repository.SchemeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable; // <-- ADDED THIS IMPORT
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -89,6 +90,7 @@ public class SchemeService {
 
     // ── Eligibility — TAG + CATEGORY based matching ───────────────────────────
 
+    @Cacheable(value = "eligibleSchemes", key = "#userId") // <-- ADDED CACHING ANNOTATION HERE
     public EligibleSchemesResponse getEligibleSchemes(String userId) {
         User user = authService.getUserById(userId);
 
@@ -96,19 +98,20 @@ public class SchemeService {
                 .filter(s -> passHardGates(s, user))
                 .filter(s -> eligibilityScore(s, user) >= 1)
                 .sorted(Comparator
+                        // 1. Sort by Highest Relevance Score first
                         .comparingInt((Scheme s) -> eligibilityScore(s, user)).reversed()
+                        // 2. Put targeted schemes above universal schemes (universal = lower priority)
+                        .thenComparing(this::isUniversalScheme)
+                        // 3. Fall back to admin priority
                         .thenComparingInt(s -> s.getPriority() != null ? s.getPriority() : Integer.MAX_VALUE))
+                .limit(50) // <-- CAP AT 50 SCHEMES MAXIMUM
                 .collect(Collectors.toList());
 
-        double totalBenefit = eligible.stream()
-                .mapToDouble(s -> parseBenefitAmount(s.getBenefitAmount()))
-                .sum();
-
-        log.info("Eligible schemes for user {} ({}): {}", user.getFullName(), userId, eligible.size());
+        log.info("Eligible schemes for user {} ({}): {} (Capped at 50, Caching Active)", user.getFullName(), userId, eligible.size());
 
         return EligibleSchemesResponse.builder()
                 .totalEligibleSchemes(eligible.size())
-                .totalPotentialBenefit(totalBenefit)
+                .totalPotentialBenefit(0.0) // Benefit breakdown removed from frontend
                 .schemes(eligible)
                 .build();
     }
@@ -212,6 +215,19 @@ public class SchemeService {
             score += 1;
 
         return score;
+    }
+
+    // ── Helper to determine if a scheme is broad/universal ────────────────────
+
+    private boolean isUniversalScheme(Scheme s) {
+        return (s.getMinAge() == null && s.getMaxAge() == null) &&
+                (s.getGender() == null || "All".equalsIgnoreCase(s.getGender())) &&
+                (s.getMaxIncome() == null) &&
+                !Boolean.TRUE.equals(s.getRequiresBpl()) &&
+                !Boolean.TRUE.equals(s.getRequiresDisability()) &&
+                (s.getOccupation() == null || s.getOccupation().isBlank()) &&
+                (s.getTargetEducationLevel() == null || s.getTargetEducationLevel().isBlank()) &&
+                (s.getEligibleCategories() == null || s.getEligibleCategories().isEmpty());
     }
 
     // ── Build scheme searchable text ──────────────────────────────────────────
