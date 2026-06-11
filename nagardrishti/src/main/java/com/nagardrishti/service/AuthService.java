@@ -25,6 +25,7 @@ public class AuthService {
     private final SchemeService     schemeService;
     private final ProjectService    projectService;
 
+    // Fixed: Constructor injection ensures all dependencies are wired correctly
     @Autowired
     public AuthService(UserRepository userRepo,
                        PasswordEncoder passwordEncoder,
@@ -73,12 +74,11 @@ public class AuthService {
                 .rationCard(req.getRationCard())
                 .healthInsurance(req.getHealthInsurance())
                 .role("USER")
-                .lastLoginAt(LocalDateTime.now()) // Set initial login time so they don't get flooded with past notifications
+                .lastLoginAt(LocalDateTime.now())
                 .build();
 
         u = userRepo.save(u);
 
-        // No new notifications on first ever registration
         return buildAuthResponse(u, "Registration successful!", new ArrayList<>(), new ArrayList<>());
     }
 
@@ -92,36 +92,27 @@ public class AuthService {
         }
 
         LocalDateTime lastLogin = u.getLastLoginAt();
-
-        // ── Fetch Delta Notifications ──
         List<Scheme> newSchemes = new ArrayList<>();
         List<Project> newProjects = new ArrayList<>();
 
         if (lastLogin != null) {
-            // Check for new schemes added since last login that THIS user is eligible for
+            // Ensure this method exists in SchemeService with exact parameters
             newSchemes = schemeService.newEligibleSchemesSince(u, lastLogin);
-
-            // Check for new projects added in their area
             newProjects = projectService.getNewInAreaSince(lastLogin, u.getPincode(), u.getZone());
         }
 
-        // Update login timestamp for the next time they log in
         u.setLastLoginAt(LocalDateTime.now());
         u = userRepo.save(u);
 
         return buildAuthResponse(u, "Login successful!", newSchemes, newProjects);
     }
 
-    // ── User Lookup ───────────────────────────────────────────────────────────
     public User getUserById(String id) {
         return userRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
     private AuthResponse buildAuthResponse(User u, String msg, List<Scheme> newSchemes, List<Project> newProjects) {
-
-        // Truncate names if they are too long for the UI dropdown
         List<String> schemeNames = newSchemes.stream()
                 .map(s -> s.getName() != null && s.getName().length() > 60
                         ? s.getName().substring(0, 57) + "..." : s.getName())
@@ -147,8 +138,6 @@ public class AuthService {
                 .girlChildrenCount(u.getGirlChildrenCount())
                 .aadhaarLinked(u.getAadhaarLinked()).bankAccount(u.getBankAccount())
                 .rationCard(u.getRationCard()).healthInsurance(u.getHealthInsurance())
-
-                // Notifications payloads mapped to AuthResponse DTO
                 .newSchemesCount(newSchemes.size())
                 .newSchemeNames(schemeNames)
                 .newProjectsCount(newProjects.size())
